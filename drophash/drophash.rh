@@ -1,0 +1,19 @@
+//----------------------------------------------------------------------------
+//  Project Drophash
+//  
+//  Copyright © 2000. All Rights Reserved.
+//
+//  SUBSYSTEM:    DropHash
+//  FILE:         drophash.rh
+//  AUTHOR:       
+//
+//  OVERVIEW
+//  ~~~~~~~~
+//  Constant definitions for all resources defined in drophash.rc.
+//
+//----------------------------------------------------------------------------
+
+#define IDI_DROPHASH	1
+#define VERSIONINFO_1	1
+
+//
