@@ -80,18 +80,42 @@ public:
 };
 
 //---------------------------------------------------------------------------
+
+static DWORD get_error_message(std::wstring & message)
+{
+    // Retrieve the system error message for the last-error code
+
+    LPVOID lpMsgBuf;
+    DWORD dw = GetLastError(); 
+
+    FormatMessageW(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        dw,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR) &lpMsgBuf,
+        0, NULL );
+
+    message += reinterpret_cast<wchar_t *>(lpMsgBuf);
+    LocalFree(lpMsgBuf);
+    return dw; 
+}
+
 static void raise_error_message(std::wstring & message)
 {
-    message += boost::lexical_cast<std::wstring>(GetLastError());
+    DWORD dw = get_error_message(message);
     MessageBoxW(NULL, message.c_str(), APPNAME, MB_ICONERROR);
+    ExitProcess(dw); 
 }
 
 static void format_hex_string(std::vector<BYTE> & buffer, std::wstring & sink)
 {
     boost::wformat hex(L"%02x");
-    std::for_each(buffer.begin(), buffer.end(), [&hex, &sink] (char x) {
+    boost::for_each(buffer, [&hex, &sink] (BYTE x) {
         static int count = 1;
-        hex % (x & 0xFF);
+        hex % x;
         sink += hex.str();  
         if ((++count)%2) sink += L" ";
     });
@@ -198,7 +222,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
             // Find a monospace font
             std::wstring faces[4] = { L"Inconsolata", L"Consolas", L"Lucida Console", L"Courier New" };
-            std::find_if(faces, faces + 4, [&result, &probe, &context] (std::wstring face) -> bool {
+
+            boost::find_if(faces, [&result, &probe, &context] (std::wstring face) -> bool {
                 HRESULT hr = StringCchCopyW(probe.lfFaceName, LF_FACESIZE, face.c_str() );
                 if (!FAILED(hr))
                 {
@@ -258,7 +283,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             if (!CryptAcquireContextW(&hProv,
                     nullptr,
                     nullptr,
-                    PROV_RSA_FULL,
+                    PROV_RSA_AES,
                     CRYPT_VERIFYCONTEXT))
             {
                 data.get() += L"CryptAcquireContext failed: " + boost::lexical_cast<std::wstring>(GetLastError());
@@ -280,25 +305,35 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 bool is_good = true;
 
                 std::vector<Recipe> inputs;
-                inputs.push_back( boost::make_tuple(L"MD5", CALG_MD5, 16 ));
-                inputs.push_back( boost::make_tuple(L"SHA", CALG_SHA1, 20 ));
+                inputs.push_back( boost::make_tuple(L"MD5     ", CALG_MD5, 16 ));
+                inputs.push_back( boost::make_tuple(L"SHA     ", CALG_SHA1, 20 ));
+                inputs.push_back( boost::make_tuple(L"SHA2-256", CALG_SHA_256, 32 ));
+
                 // ... add more hash algorithms here
+                //#define CALG_SHA_256            (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_SHA_256)
+                //#define CALG_SHA_384            (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_SHA_384)
+                //#define CALG_SHA_512            (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_SHA_512)
 
                 std::vector<Record> results;
                 results.resize(inputs.size());  
 
-                std::transform(inputs.begin(), inputs.end(), results.begin(), [&provider, &data] (Recipe in) -> Record {
+                boost::transform(inputs, results.begin(), [&provider, &data] (Recipe in) -> Record {
                     HCRYPTHASH hHash = 0;
 
                     if (!CryptCreateHash(provider.get(), in.get<1>(), 0, 0, &hHash))
                     {
-                        data.get() += L"CryptCreateHash " + in.get<0>() + L" failed: " + boost::lexical_cast<std::wstring>(GetLastError());
+                        std::wstring message = L"CryptCreateHash " + in.get<0>() + L" failed: ";
+                        get_error_message(message);
+                        data.get() += message;
                         hHash = 0;
                     }
 
                     ScopedHash * ptr = new ScopedHash(hHash);
                     return boost::make_tuple(in.get<0>(), std::tr1::shared_ptr<ScopedHash>(ptr), in.get<2>());
                 });
+
+                data.get() += &fn[0];
+                data.get() += L"\r\n";
 
                 std::ifstream file(&fn[0], std::ios::in|std::ios::binary);
                 std::vector<char> chunk(4096);
@@ -312,13 +347,16 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         DWORD got = boost::numeric_cast<DWORD>(file.gcount());
 
                         auto check = 
-                            std::find_if(results.begin(), results.end(), [&data, &chunk, &got] (Record hash) -> bool {
-                            if (hash.get<1>()->get() && CryptHashData(hash.get<1>()->get(), reinterpret_cast<BYTE*>(&chunk[0]), got, 0))
+                            boost::find_if(results, [&data, &chunk, &got] (Record hash) -> bool {
+                            if (!hash.get<1>()->get() || CryptHashData(hash.get<1>()->get(), reinterpret_cast<BYTE*>(&chunk[0]), got, 0))
                             {
                                 return false;
                             }
 
-                            data.get() += L"CryptHashData " + hash.get<0>() + L" failed: " + boost::lexical_cast<std::wstring>(GetLastError());
+                            std::wstring message = L"CryptHashData " + hash.get<0>() + L" failed: ";
+                            get_error_message(message);
+                            data.get() += message;
+                            data.get() += L"\r\n";
                             return true;
                         });
 
@@ -336,7 +374,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     }
 
                     // Format the outputs
-                    std::for_each(results.begin(), results.end(), [&data] (Record hash) {
+                    boost::for_each(results, [&data] (Record hash) {
                         DWORD hash_size = hash.get<2>();
                         std::vector<BYTE> buffer(hash_size);
                         if (hash.get<1>()->get())
@@ -348,14 +386,17 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                             }
                             else
                             {
-                                data.get() += L"CryptGetHashParam " + hash.get<0>() + L" failed: " + boost::lexical_cast<std::wstring>(GetLastError()) + L" ";
+                                std::wstring message = L"CryptGetHashParam " + hash.get<0>() + L" failed: ";
+                                get_error_message(message);
+                                data.get() += message;
                             }
+                            data.get() += L"\r\n";
                         }
                     });
                 } // file opened
 
-                data.get() += &fn[0];
                 data.get() += L"\r\n";
+
             }
 
             return 0;
