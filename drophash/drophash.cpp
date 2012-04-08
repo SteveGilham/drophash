@@ -68,7 +68,7 @@ public:
     }
 };
 
-class ScopedDc  : private boost::noncopyable {
+class ScopedDc : private boost::noncopyable {
 private:
     HDC context;
 public:
@@ -77,6 +77,34 @@ public:
     }
     HDC get(void) const { return context; }
     ~ScopedDc() { ReleaseDC( NULL, context ); }
+};
+
+template<typename T> class LocalFreed : private boost::noncopyable {
+private:
+    T * value;
+public: 
+    LocalFreed(T * _value) : value(_value) {}
+    T * get(void) const { return value; }
+    ~LocalFreed() {
+        if (value) 
+        {
+            LocalFree(value);
+        }
+    }
+};
+
+class GlobalLocked : private boost::noncopyable {
+private:
+    HGLOBAL hGlobal;
+    void * value;
+public:
+    GlobalLocked(HGLOBAL _hGlobal) : hGlobal(_hGlobal) {
+        value = GlobalLock(hGlobal);
+    }
+    void * get(void) const { return value; }
+    ~GlobalLocked() {
+        GlobalUnlock(hGlobal);
+    }
 };
 
 //---------------------------------------------------------------------------
@@ -98,8 +126,8 @@ static DWORD get_error_message(std::wstring & message)
         (LPTSTR) &lpMsgBuf,
         0, NULL );
 
-    message += reinterpret_cast<wchar_t *>(lpMsgBuf);
-    LocalFree(lpMsgBuf);
+    LocalFreed<void> buffer(lpMsgBuf);
+    message += reinterpret_cast<wchar_t *>(buffer.get());
     return dw; 
 }
 
@@ -121,12 +149,9 @@ static void format_hex_string(std::vector<BYTE> & buffer, std::wstring & sink)
     });
 }
 
-
 //---------------------------------------------------------------------------
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int show)
 {
-    using boost::lexical_cast;
-
     WNDCLASS wndclass;
     wndclass.style = CS_HREDRAW | CS_VREDRAW;
     wndclass.lpfnWndProc = reinterpret_cast<WNDPROC>(MainWndProc);
@@ -255,6 +280,57 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
         SetWindowText(client, text.c_str());
         text.clear();
+
+        // Synthetic drop on activation
+        {
+            int nArgs;
+
+            LPWSTR *szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+            if (szArglist)
+            {
+                LocalFreed<LPWSTR> buffer(szArglist);
+
+                // Skip the executable name
+                std::vector<LPWSTR> args(szArglist+1, szArglist + nArgs);
+
+                // pointer arithmetic, yuck!!
+                SIZE_T wideheader = (sizeof(DROPFILES) + sizeof(wchar_t) - 1)/sizeof(wchar_t);
+                SIZE_T header = wideheader *sizeof(wchar_t);
+                SIZE_T buffersize = header;
+
+                boost::for_each(args, [&buffersize] (LPWSTR in) {
+                    buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
+                });
+
+                HGLOBAL hGlobal = GlobalAlloc(GHND | GMEM_SHARE, buffersize);
+                if (hGlobal)
+                {
+                    {
+                        GlobalLocked memory(hGlobal);
+
+                        LPDROPFILES pDropFiles = reinterpret_cast<LPDROPFILES>(memory.get());
+                        pDropFiles->pFiles = header;
+                        pDropFiles->fWide = TRUE;
+                        pDropFiles->pt.x = pDropFiles->pt.y = 0;
+                        pDropFiles->fNC = FALSE;
+
+                        wchar_t * buffer = reinterpret_cast<wchar_t *>(memory.get()) + wideheader;
+                        wchar_t * end = reinterpret_cast<wchar_t *>(memory.get()) + (buffersize / sizeof(wchar_t));
+
+                        boost::for_each(args, [&buffer, &end] (LPWSTR in) {
+                            wcscpy_s(buffer, end-buffer, in);
+                            buffer += (wcslen(in) + 1);
+                        });
+
+                        *buffer = L'\0';
+                    }
+
+                    // send DnD event
+                    PostMessage(hwnd, WM_DROPFILES, (WPARAM)hGlobal, 0);
+                }
+            }
+        }
+
         return 0;
 
         case WM_SETFOCUS:

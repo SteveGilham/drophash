@@ -10,6 +10,7 @@
 // Windows Header Files:
 #pragma warning (disable : 4995)
 #include <windows.h>
+#include <Shlobj.h>
 #include <Strsafe.h>
 
 #include <algorithm>
@@ -21,6 +22,7 @@
 
 #include "Resource.h"
 
+#include "boost/any.hpp"
 #include "boost/cast.hpp"
 #include "boost/format.hpp"
 #include "boost/lexical_cast.hpp"
