@@ -286,7 +286,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             int nArgs;
 
             LPWSTR *szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
-            if (szArglist)
+            if (szArglist && nArgs > 1)
             {
                 LocalFreed<LPWSTR> buffer(szArglist);
 
@@ -377,18 +377,14 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 DragQueryFileW(drop.get(), i, &fn[0], fn.size());
 
                 typedef boost::tuple<std::wstring, DWORD, DWORD> Recipe;
-                typedef boost::tuple<std::wstring, std::tr1::shared_ptr<ScopedHash>, DWORD> Record;
+                typedef boost::tuple<std::wstring, std::shared_ptr<ScopedHash>, DWORD> Record;
                 bool is_good = true;
 
                 std::vector<Recipe> inputs;
                 inputs.push_back( boost::make_tuple(L"MD5     ", CALG_MD5, 16 ));
                 inputs.push_back( boost::make_tuple(L"SHA     ", CALG_SHA1, 20 ));
                 inputs.push_back( boost::make_tuple(L"SHA2-256", CALG_SHA_256, 32 ));
-
-                // ... add more hash algorithms here
-                //#define CALG_SHA_256            (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_SHA_256)
-                //#define CALG_SHA_384            (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_SHA_384)
-                //#define CALG_SHA_512            (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_SHA_512)
+                // ... add more hash algorithms here e.g. CALG_SHA_384 or CALG_SHA_512
 
                 std::vector<Record> results;
                 results.resize(inputs.size());  
