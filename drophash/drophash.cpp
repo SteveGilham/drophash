@@ -8,6 +8,37 @@ LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define APPNAME   TEXT("DropHash2012")
 
 //---------------------------------------------------------------------------
+template<class _Ty> class disposeable : private boost::noncopyable {
+private:
+	_Ty object;
+	class disposalbase 
+	{
+	public:
+		disposalbase() {}
+		virtual ~disposalbase() {}
+	};
+	template<class _Uy,
+		class _Dy> class disposer  : public disposalbase {
+		_Uy object;
+		_Dy deleter;
+		public:
+			disposer(_Uy _Ut, _Dy _Dt) : object(_Ut), deleter(_Dt) {}
+			~disposer() { 
+				std::cout << "Disposing\r\n";
+				deleter(object); 
+			}
+		};
+	std::unique_ptr<disposalbase> disposal;
+
+public:
+template<class _Ty,
+		class _Dx>
+			disposeable(_Ty _X, _Dx _Dt) : object(_X), disposal(new disposer<_Ty, _Dx>(_X, _Dt)) {}
+    _Ty get(void) const { return object; }
+    ~disposeable() { }
+};			
+
+/*
 class DropFinisher : private boost::noncopyable {
 private:
     HDROP drop;
@@ -16,6 +47,7 @@ public:
     HDROP get(void) const { return drop; }
     ~DropFinisher() { DragFinish(drop); }
 };
+*/
 
 class StringFinisher : private boost::noncopyable {
 private:
@@ -30,6 +62,7 @@ public:
     }
 };
 
+/*
 class ScopedCrypto : private boost::noncopyable {
 private:
     HCRYPTPROV prov;
@@ -38,6 +71,7 @@ public:
     HCRYPTPROV get(void) const { return prov; }
     ~ScopedCrypto() { CryptReleaseContext(prov, 0); }
 };
+
 
 class ScopedHash : private boost::noncopyable {
 private:
@@ -52,7 +86,7 @@ public:
         } 
     }
 };
-
+*/
 class WaitCursor : private boost::noncopyable {
 private:
     HCURSOR cursor;
@@ -68,6 +102,7 @@ public:
     }
 };
 
+/*
 class ScopedDc : private boost::noncopyable {
 private:
     HDC context;
@@ -78,6 +113,7 @@ public:
     HDC get(void) const { return context; }
     ~ScopedDc() { ReleaseDC( NULL, context ); }
 };
+
 
 template<typename T> class LocalFreed : private boost::noncopyable {
 private:
@@ -91,6 +127,13 @@ public:
             LocalFree(value);
         }
     }
+};
+*/
+template<typename T> class LocalFreed : public disposeable<T*> {
+	static void local_free(T * value) { if (value) LocalFree(value);}
+public:
+	LocalFreed(T * _value) : disposeable<T*>(_value, &LocalFreed::local_free) {}
+	virtual ~LocalFreed() {}
 };
 
 class GlobalLocked : private boost::noncopyable {
@@ -126,8 +169,9 @@ static DWORD get_error_message(std::wstring & message)
         (LPTSTR) &lpMsgBuf,
         0, NULL );
 
-    LocalFreed<void> buffer(lpMsgBuf);
-    message += reinterpret_cast<wchar_t *>(buffer.get());
+    LocalFreed<wchar_t> buffer(reinterpret_cast<wchar_t *>(lpMsgBuf));
+
+    message += buffer.get();
     return dw; 
 }
 
@@ -236,7 +280,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 return 0;
             }
             
-            ScopedDc context;
+            ////ScopedDc context;
+			disposeable<HDC> context(GetDC( NULL ), [] (HDC dc) {ReleaseDC( NULL, dc );});
 
             LOGFONTW probe;
             probe.lfFaceName[0] = L'\0';
@@ -347,7 +392,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             WaitCursor waiter;
             waiter;
             StringFinisher data(client, text);
-            DropFinisher drop(reinterpret_cast<HDROP>(wParam));
+			disposeable<HDROP> drop(reinterpret_cast<HDROP>(wParam), &DragFinish);
+
+            ////DropFinisher drop(reinterpret_cast<HDROP>(wParam));
             UINT nfiles = DragQueryFileW(drop.get(), 0xFFFFFFFF, nullptr, 0);
 
             data.get() += L"Dropped "+ boost::lexical_cast<std::wstring>(nfiles) + 
@@ -367,7 +414,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             }
 
             // and manage its lifetime
-            ScopedCrypto provider(hProv);
+            ////ScopedCrypto provider(hProv);
+			disposeable<HCRYPTPROV> provider(hProv, [] (HCRYPTPROV prov) {CryptReleaseContext(prov, 0);});
 
             // Now hash each file in turn
             for(UINT i = 0; i < nfiles; ++i)
@@ -377,7 +425,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 DragQueryFileW(drop.get(), i, &fn[0], fn.size());
 
                 typedef boost::tuple<std::wstring, DWORD, DWORD> Recipe;
-                typedef boost::tuple<std::wstring, std::shared_ptr<ScopedHash>, DWORD> Record;
+                typedef boost::tuple<std::wstring, std::shared_ptr<disposeable<HCRYPTHASH>>, DWORD> Record;
                 bool is_good = true;
 
                 std::vector<Recipe> inputs;
@@ -400,8 +448,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         hHash = 0;
                     }
 
-                    ScopedHash * ptr = new ScopedHash(hHash);
-                    return boost::make_tuple(in.get<0>(), std::tr1::shared_ptr<ScopedHash>(ptr), in.get<2>());
+					auto ptr = new disposeable<HCRYPTHASH>(hHash, [] (HCRYPTHASH hash){if(hash){CryptDestroyHash(hash);}});
+                    return boost::make_tuple(in.get<0>(), std::tr1::shared_ptr<disposeable<HCRYPTHASH>>(ptr), in.get<2>());
                 });
 
                 data.get() += &fn[0];
