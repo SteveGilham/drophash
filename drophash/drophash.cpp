@@ -128,13 +128,14 @@ public:
         }
     }
 };
-*/
 template<typename T> class LocalFreed : public disposeable<T*> {
 	static void local_free(T * value) { if (value) LocalFree(value);}
 public:
 	LocalFreed(T * _value) : disposeable<T*>(_value, &LocalFreed::local_free) {}
 	virtual ~LocalFreed() {}
-};
+};*/
+
+template<typename T> void local_free(T * value) { if (value) LocalFree(value);}
 
 class GlobalLocked : private boost::noncopyable {
 private:
@@ -169,7 +170,8 @@ static DWORD get_error_message(std::wstring & message)
         (LPTSTR) &lpMsgBuf,
         0, NULL );
 
-    LocalFreed<wchar_t> buffer(reinterpret_cast<wchar_t *>(lpMsgBuf));
+	std::unique_ptr<wchar_t, void(__cdecl*)(wchar_t*)> buffer(
+		reinterpret_cast<wchar_t *>(lpMsgBuf), local_free<wchar_t>);
 
     message += buffer.get();
     return dw; 
@@ -333,7 +335,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             LPWSTR *szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
             if (szArglist && nArgs > 1)
             {
-                LocalFreed<LPWSTR> buffer(szArglist);
+				std::unique_ptr<LPWSTR, void(__cdecl*)(LPWSTR*)> buffer(
+					szArglist, local_free<LPWSTR>);
 
                 // Skip the executable name
                 std::vector<LPWSTR> args(szArglist+1, szArglist + nArgs);
@@ -392,6 +395,15 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             WaitCursor waiter;
             waiter;
             StringFinisher data(client, text);
+
+			//// How to get this to work?
+			/* HWND canvas = client;
+			std::wstring & holder = text;
+			disposeable<std::wstring> data(holder, [canvas] (std::wstring &str) { 
+				        str += L"\r\n";
+						SetWindowText(canvas, str.c_str()); 
+						}); */
+
 			disposeable<HDROP> drop(reinterpret_cast<HDROP>(wParam), &DragFinish);
 
             ////DropFinisher drop(reinterpret_cast<HDROP>(wParam));
