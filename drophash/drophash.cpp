@@ -10,44 +10,31 @@ LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 //---------------------------------------------------------------------------
 template<class _Ty> class disposeable : private boost::noncopyable {
 private:
-	_Ty object;
-	class disposalbase 
-	{
-	public:
-		disposalbase() {}
-		virtual ~disposalbase() {}
-	};
-	template<class _Uy,
-		class _Dy> class disposer  : public disposalbase {
-		_Uy object;
-		_Dy deleter;
-		public:
-			disposer(_Uy _Ut, _Dy _Dt) : object(_Ut), deleter(_Dt) {}
-			~disposer() { 
-				deleter(object); 
-			}
-		};
-	std::unique_ptr<disposalbase> disposal;
+    _Ty object;
+    class disposalbase 
+    {
+    public:
+        disposalbase() {}
+        virtual ~disposalbase() {}
+    };
+    template<class _Uy,
+        class _Dy> class disposer  : public disposalbase {
+        _Uy object;
+        _Dy deleter;
+        public:
+            disposer(_Uy _Ut, _Dy _Dt) : object(_Ut), deleter(_Dt) {}
+            ~disposer() { 
+                deleter(object); 
+            }
+        };
+    std::unique_ptr<disposalbase> disposal;
 
 public:
 template<class _Ty,
-		class _Dx>
-			disposeable(_Ty _X, _Dx _Dt) : object(_X), disposal(new disposer<_Ty, _Dx>(_X, _Dt)) {}
+        class _Dx>
+            disposeable(_Ty _X, _Dx _Dt) : object(_X), disposal(new disposer<_Ty, _Dx>(_X, _Dt)) {}
     _Ty get(void) const { return object; }
     ~disposeable() { }
-};			
-
-class StringFinisher : private boost::noncopyable {
-private:
-    HWND client;
-    std::wstring & text;
-public:
-    StringFinisher(HWND _client, std::wstring & _text) : client(_client), text(_text) {}
-    std::wstring & get(void) const { return text; }
-    ~StringFinisher() { 
-        text += L"\r\n";
-        SetWindowText(client, text.c_str()); 
-    }
 };
 
 class WaitCursor : private boost::noncopyable {
@@ -65,8 +52,6 @@ public:
     }
 };
 
-template<typename T> void local_free(T * value) { if (value) LocalFree(value);}
-
 class GlobalLocked : private boost::noncopyable {
 private:
     HGLOBAL hGlobal;
@@ -80,6 +65,9 @@ public:
         GlobalUnlock(hGlobal);
     }
 };
+
+// simplifies unique_ptr declaration -- can we get rid of it?
+template<typename T> void local_free(T * value) { LocalFree(value); }
 
 //---------------------------------------------------------------------------
 
@@ -100,8 +88,8 @@ static DWORD get_error_message(std::wstring & message)
         (LPTSTR) &lpMsgBuf,
         0, NULL );
 
-	std::unique_ptr<wchar_t, void(__cdecl*)(wchar_t*)> buffer(
-		reinterpret_cast<wchar_t *>(lpMsgBuf), local_free<wchar_t>);
+    std::unique_ptr<wchar_t, void(__cdecl*)(wchar_t*)> buffer(
+        reinterpret_cast<wchar_t *>(lpMsgBuf), local_free<wchar_t>);
 
     message += buffer.get();
     return dw; 
@@ -212,7 +200,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 return 0;
             }
             
-			disposeable<HDC> context(GetDC( NULL ), [] (HDC dc) {ReleaseDC( NULL, dc );});
+            disposeable<HDC> context(GetDC( NULL ), [] (HDC dc) {ReleaseDC( NULL, dc );});
 
             LOGFONTW probe;
             probe.lfFaceName[0] = L'\0';
@@ -264,8 +252,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             LPWSTR *szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
             if (szArglist && nArgs > 1)
             {
-				std::unique_ptr<LPWSTR, void(__cdecl*)(LPWSTR*)> buffer(
-					szArglist, local_free<LPWSTR>);
+                std::unique_ptr<LPWSTR, void(__cdecl*)(LPWSTR*)> buffer(
+                    szArglist, local_free<LPWSTR>);
 
                 // Skip the executable name
                 std::vector<LPWSTR> args(szArglist+1, szArglist + nArgs);
@@ -323,22 +311,20 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
         {
             WaitCursor waiter;
             waiter;
-            ////StringFinisher data(client, text);
 
-			//// How to get this to work?
-			HWND canvas = client;
-			disposeable<std::wstring *> data(&text, [canvas] (std::wstring * str) { 
-				        *str += L"\r\n";
-						SetWindowText(canvas, str->c_str()); 
-						});
+            HWND canvas = client;
+            auto lambda = [canvas] (std::wstring * str) { 
+                        *str += L"\r\n";
+                        SetWindowText(canvas, str->c_str()); 
+                        };
+            std::unique_ptr<std::wstring, decltype(lambda)> data(&text, lambda);
 
-			disposeable<HDROP> drop(reinterpret_cast<HDROP>(wParam), &DragFinish);
+            disposeable<HDROP> drop(reinterpret_cast<HDROP>(wParam), &DragFinish);
 
             UINT nfiles = DragQueryFileW(drop.get(), 0xFFFFFFFF, nullptr, 0);
 
             (*data.get()) += L"Dropped "+ boost::lexical_cast<std::wstring>(nfiles) + 
                    L" files\r\n";
-
 
             // Get handle to the crypto provider
             HCRYPTPROV hProv = 0;
@@ -353,7 +339,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             }
 
             // and manage its lifetime
-			disposeable<HCRYPTPROV> provider(hProv, [] (HCRYPTPROV prov) {CryptReleaseContext(prov, 0);});
+            disposeable<HCRYPTPROV> provider(hProv, [] (HCRYPTPROV prov) {CryptReleaseContext(prov, 0);});
 
             // Now hash each file in turn
             for(UINT i = 0; i < nfiles; ++i)
@@ -386,7 +372,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         hHash = 0;
                     }
 
-					auto ptr = new disposeable<HCRYPTHASH>(hHash, [] (HCRYPTHASH hash){if(hash){CryptDestroyHash(hash);}});
+                    auto ptr = new disposeable<HCRYPTHASH>(hHash, [] (HCRYPTHASH hash){if(hash){CryptDestroyHash(hash);}});
                     return boost::make_tuple(in.get<0>(), std::tr1::shared_ptr<disposeable<HCRYPTHASH>>(ptr), in.get<2>());
                 });
 
