@@ -24,7 +24,6 @@ private:
 		public:
 			disposer(_Uy _Ut, _Dy _Dt) : object(_Ut), deleter(_Dt) {}
 			~disposer() { 
-				std::cout << "Disposing\r\n";
 				deleter(object); 
 			}
 		};
@@ -37,17 +36,6 @@ template<class _Ty,
     _Ty get(void) const { return object; }
     ~disposeable() { }
 };			
-
-/*
-class DropFinisher : private boost::noncopyable {
-private:
-    HDROP drop;
-public:
-    DropFinisher(HDROP _drop) : drop(_drop) {}
-    HDROP get(void) const { return drop; }
-    ~DropFinisher() { DragFinish(drop); }
-};
-*/
 
 class StringFinisher : private boost::noncopyable {
 private:
@@ -62,31 +50,6 @@ public:
     }
 };
 
-/*
-class ScopedCrypto : private boost::noncopyable {
-private:
-    HCRYPTPROV prov;
-public:
-    ScopedCrypto(HCRYPTPROV _prov) : prov(_prov) {}
-    HCRYPTPROV get(void) const { return prov; }
-    ~ScopedCrypto() { CryptReleaseContext(prov, 0); }
-};
-
-
-class ScopedHash : private boost::noncopyable {
-private:
-    HCRYPTHASH hash;
-public:
-    ScopedHash(HCRYPTHASH _hash) : hash(_hash) {}
-    HCRYPTHASH get(void) const { return hash; }
-    ~ScopedHash() { 
-        if (hash)
-        {
-            CryptDestroyHash(hash);
-        } 
-    }
-};
-*/
 class WaitCursor : private boost::noncopyable {
 private:
     HCURSOR cursor;
@@ -101,39 +64,6 @@ public:
         ShowCursor(TRUE); 
     }
 };
-
-/*
-class ScopedDc : private boost::noncopyable {
-private:
-    HDC context;
-public:
-    ScopedDc() { 
-        context = GetDC( NULL ); 
-    }
-    HDC get(void) const { return context; }
-    ~ScopedDc() { ReleaseDC( NULL, context ); }
-};
-
-
-template<typename T> class LocalFreed : private boost::noncopyable {
-private:
-    T * value;
-public: 
-    LocalFreed(T * _value) : value(_value) {}
-    T * get(void) const { return value; }
-    ~LocalFreed() {
-        if (value) 
-        {
-            LocalFree(value);
-        }
-    }
-};
-template<typename T> class LocalFreed : public disposeable<T*> {
-	static void local_free(T * value) { if (value) LocalFree(value);}
-public:
-	LocalFreed(T * _value) : disposeable<T*>(_value, &LocalFreed::local_free) {}
-	virtual ~LocalFreed() {}
-};*/
 
 template<typename T> void local_free(T * value) { if (value) LocalFree(value);}
 
@@ -282,7 +212,6 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 return 0;
             }
             
-            ////ScopedDc context;
 			disposeable<HDC> context(GetDC( NULL ), [] (HDC dc) {ReleaseDC( NULL, dc );});
 
             LOGFONTW probe;
@@ -406,7 +335,6 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
 			disposeable<HDROP> drop(reinterpret_cast<HDROP>(wParam), &DragFinish);
 
-            ////DropFinisher drop(reinterpret_cast<HDROP>(wParam));
             UINT nfiles = DragQueryFileW(drop.get(), 0xFFFFFFFF, nullptr, 0);
 
             data.get() += L"Dropped "+ boost::lexical_cast<std::wstring>(nfiles) + 
@@ -426,7 +354,6 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             }
 
             // and manage its lifetime
-            ////ScopedCrypto provider(hProv);
 			disposeable<HCRYPTPROV> provider(hProv, [] (HCRYPTPROV prov) {CryptReleaseContext(prov, 0);});
 
             // Now hash each file in turn
