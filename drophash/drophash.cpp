@@ -323,7 +323,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
             UINT nfiles = DragQueryFileW(drop.get(), 0xFFFFFFFF, nullptr, 0);
 
-            (*data.get()) += L"Dropped "+ boost::lexical_cast<std::wstring>(nfiles) + 
+            *data += L"Dropped "+ boost::lexical_cast<std::wstring>(nfiles) + 
                    L" files\r\n";
 
             // Get handle to the crypto provider
@@ -334,7 +334,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     PROV_RSA_AES,
                     CRYPT_VERIFYCONTEXT))
             {
-                (*data.get()) += L"CryptAcquireContext failed: " + boost::lexical_cast<std::wstring>(GetLastError());
+                *data += L"CryptAcquireContext failed: " + boost::lexical_cast<std::wstring>(GetLastError());
                 return 0;
             }
 
@@ -368,7 +368,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     {
                         std::wstring message = L"CryptCreateHash " + in.get<0>() + L" failed: ";
                         get_error_message(message);
-                        (*data.get()) += message;
+                        *data += message;
                         hHash = 0;
                     }
 
@@ -376,8 +376,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     return boost::make_tuple(in.get<0>(), std::tr1::shared_ptr<disposeable<HCRYPTHASH>>(ptr), in.get<2>());
                 });
 
-                (*data.get()) += &fn[0];
-                (*data.get()) += L"\r\n";
+                *data += &fn[0];
+                *data += L"\r\n";
 
                 std::ifstream file(&fn[0], std::ios::in|std::ios::binary);
                 std::vector<char> chunk(4096);
@@ -399,8 +399,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
                             std::wstring message = L"CryptHashData " + hash.get<0>() + L" failed: ";
                             get_error_message(message);
-                            (*data.get()) += message;
-                            (*data.get()) += L"\r\n";
+                            *data += message;
+                            *data += L"\r\n";
                             return true;
                         });
 
@@ -425,21 +425,21 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         {
                             if(CryptGetHashParam(hash.get<1>()->get(), HP_HASHVAL, &buffer[0], &hash_size, 0))
                             {
-                                (*data.get()) += hash.get<0>() + L": ";
+                                *data += hash.get<0>() + L": ";
                                 format_hex_string(buffer, *data.get());
                             }
                             else
                             {
                                 std::wstring message = L"CryptGetHashParam " + hash.get<0>() + L" failed: ";
                                 get_error_message(message);
-                                (*data.get()) += message;
+                                *data += message;
                             }
-                            (*data.get()) += L"\r\n";
+                            *data += L"\r\n";
                         }
                     });
                 } // file opened
 
-                (*data.get()) += L"\r\n";
+                *data += L"\r\n";
 
             }
 
