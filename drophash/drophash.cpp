@@ -33,7 +33,7 @@ public:
 template<class _Ty,
         class _Dx>
             disposeable(_Ty _X, _Dx _Dt) : object(_X), disposal(new disposer<_Ty, _Dx>(_X, _Dt)) {}
-    _Ty get(void) const { return object; }
+    _Ty operator()(void) const { return object; }
     ~disposeable() { }
 };
 
@@ -216,7 +216,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 HRESULT hr = StringCchCopyW(probe.lfFaceName, LF_FACESIZE, face.c_str() );
                 if (!FAILED(hr))
                 {
-                    EnumFontFamiliesExW( context.get(), &probe, reinterpret_cast<FONTENUMPROC>(EnumFontFamiliesExProc), reinterpret_cast<LPARAM>(&result), 0 );
+                    EnumFontFamiliesExW( context(), &probe, reinterpret_cast<FONTENUMPROC>(EnumFontFamiliesExProc), reinterpret_cast<LPARAM>(&result), 0 );
                     return !!result.lfFaceName[0];
                 }
 
@@ -321,7 +321,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
             disposeable<HDROP> drop(reinterpret_cast<HDROP>(wParam), &DragFinish);
 
-            UINT nfiles = DragQueryFileW(drop.get(), 0xFFFFFFFF, nullptr, 0);
+            UINT nfiles = DragQueryFileW(drop(), 0xFFFFFFFF, nullptr, 0);
 
             *data += L"Dropped "+ boost::lexical_cast<std::wstring>(nfiles) + 
                    L" files\r\n";
@@ -344,9 +344,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             // Now hash each file in turn
             for(UINT i = 0; i < nfiles; ++i)
             {
-                UINT length = DragQueryFileW(drop.get(), i, nullptr, 0);
+                UINT length = DragQueryFileW(drop(), i, nullptr, 0);
                 std::vector<wchar_t> fn(length + 1);
-                DragQueryFileW(drop.get(), i, &fn[0], fn.size());
+                DragQueryFileW(drop(), i, &fn[0], fn.size());
 
                 typedef boost::tuple<std::wstring, DWORD, DWORD> Recipe;
                 typedef boost::tuple<std::wstring, std::shared_ptr<disposeable<HCRYPTHASH>>, DWORD> Record;
@@ -364,7 +364,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 boost::transform(inputs, results.begin(), [&provider, &data] (Recipe in) -> Record {
                     HCRYPTHASH hHash = 0;
 
-                    if (!CryptCreateHash(provider.get(), in.get<1>(), 0, 0, &hHash))
+                    if (!CryptCreateHash(provider(), in.get<1>(), 0, 0, &hHash))
                     {
                         std::wstring message = L"CryptCreateHash " + in.get<0>() + L" failed: ";
                         get_error_message(message);
@@ -392,7 +392,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
                         auto check = 
                             boost::find_if(results, [&data, &chunk, &got] (Record hash) -> bool {
-                            if (!hash.get<1>()->get() || CryptHashData(hash.get<1>()->get(), reinterpret_cast<BYTE*>(&chunk[0]), got, 0))
+                            auto handle = (*hash.get<1>())();
+                            if (!handle || CryptHashData(handle, reinterpret_cast<BYTE*>(&chunk[0]), got, 0))
                             {
                                 return false;
                             }
@@ -421,9 +422,10 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     boost::for_each(results, [&data] (Record hash) {
                         DWORD hash_size = hash.get<2>();
                         std::vector<BYTE> buffer(hash_size);
-                        if (hash.get<1>()->get())
+                        auto handle = (*hash.get<1>())();
+                        if (handle)
                         {
-                            if(CryptGetHashParam(hash.get<1>()->get(), HP_HASHVAL, &buffer[0], &hash_size, 0))
+                            if(CryptGetHashParam(handle, HP_HASHVAL, &buffer[0], &hash_size, 0))
                             {
                                 *data += hash.get<0>() + L": ";
                                 format_hex_string(buffer, *data.get());
