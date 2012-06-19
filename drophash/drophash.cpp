@@ -23,16 +23,13 @@ private:
         _Dy deleter;
         public:
             disposer(_Uy _Ut, _Dy _Dt) : object(_Ut), deleter(_Dt) {}
-            ~disposer() { 
-                deleter(object); 
-            }
+            ~disposer() { deleter(object); }
         };
     std::unique_ptr<disposalbase> disposal;
 
 public:
-template<class _Ty,
-        class _Dx>
-            disposeable(_Ty _X, _Dx _Dt) : object(_X), disposal(new disposer<_Ty, _Dx>(_X, _Dt)) {}
+    template<class _Ty, class _Dx>
+        disposeable(_Ty _X, _Dx _Dt) : object(_X), disposal(new disposer<_Ty, _Dx>(_X, _Dt)) {}
     _Ty operator()(void) const { return object; }
     ~disposeable() { }
 };
