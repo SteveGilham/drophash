@@ -9,9 +9,11 @@ extern crate libc;
 
 use std::iter;
 
+use winapi::windef::HDC;
 use winapi::windef::HWND;
 use winapi::windef::HMENU;
 use winapi::windef::HBRUSH;
+use winapi::windef::HCURSOR;
 use winapi::minwindef::HINSTANCE;
 
 use winapi::minwindef::BOOL;
@@ -20,93 +22,122 @@ use winapi::minwindef::DWORD;
 use winapi::minwindef::WPARAM;
 use winapi::minwindef::LPARAM;
 use winapi::minwindef::LRESULT;
+use winapi::minwindef::HGLOBAL;
+
 use winapi::winnt::LPCWSTR;
 
 const APPNAME: &'static str = "DropHash2016";
 
-//---------------------------------------------------------------------------
-// template<class _Ty> class disposeable : private boost::noncopyable {
-// private:
-//     _Ty object;
-//     class disposalbase 
-//     {
-//     public:
-//         disposalbase() {}
-//         virtual ~disposalbase() {}
-//     };
-//     template<class _Uy,
-//         class _Dy> class disposer  : public disposalbase {
-//         _Uy object;
-//         _Dy deleter;
-//         public:
-//             disposer(_Uy _Ut, _Dy _Dt) : object(_Ut), deleter(_Dt) {}
-//             ~disposer() { deleter(object); }
-//         };
-//     std::unique_ptr<disposalbase> disposal;
+struct Hdc {
+    dc: HDC,
+}
+impl Drop for Hdc {
+    fn drop(&mut self) {
+        unsafe {
+            user32::ReleaseDC( std::ptr::null_mut(), self.dc );
+        }
+    }
+}
 
-// public:
-//     template<class _Ty, class _Dx>
-//         disposeable(_Ty _X, _Dx _Dt) : object(_X), disposal(new disposer<_Ty, _Dx>(_X, _Dt)) {}
-//     _Ty operator()(void) const { return object; }
-//     ~disposeable() { }
-// };
+struct WaitCursor {
+    cursor: HCURSOR
+}
 
-// class WaitCursor : private boost::noncopyable {
-// private:
-//     HCURSOR cursor;
-// public:
-//     WaitCursor() { 
-//         cursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
-//         ShowCursor(TRUE); 
-//     }
-//     ~WaitCursor() { 
-//         ShowCursor(FALSE); 
-//         SetCursor(cursor);
-//         ShowCursor(TRUE); 
-//     }
-// };
+impl WaitCursor {
+    pub fn new() -> WaitCursor { 
+        unsafe {
+            let w = WaitCursor {
+                cursor : user32::SetCursor(user32::LoadCursorW(std::ptr::null_mut(), winapi::winuser::IDC_WAIT))
+            };
+            user32::ShowCursor(1);
+            return w;
+        }    
+    }
+}
 
-// class GlobalLocked : private boost::noncopyable {
-// private:
-//     HGLOBAL hGlobal;
-//     void * value;
-// public:
-//     GlobalLocked(HGLOBAL _hGlobal) : hGlobal(_hGlobal) {
-//         value = GlobalLock(hGlobal);
-//     }
-//     void * get(void) const { return value; }
-//     ~GlobalLocked() {
-//         GlobalUnlock(hGlobal);
-//     }
-// };
+impl Drop for WaitCursor {
+    fn drop(&mut self) {
+        unsafe {
+            user32::ShowCursor(0); 
+            user32::SetCursor(self.cursor);
+            user32::ShowCursor(1);
+        }
+    }    
+}
 
-// // simplifies unique_ptr declaration -- can we get rid of it?
-// template<typename T> void local_free(T * value) { LocalFree(value); }
+struct GlobalLocked<T> {
+    h_global : HGLOBAL,
+    value : *const T
+}
+
+impl<T> GlobalLocked<T> {
+    pub fn new(global : HGLOBAL) -> GlobalLocked<T> { 
+        unsafe {
+            return GlobalLocked {
+                h_global: global,
+                value : kernel32::GlobalLock(global) as *const T
+            };
+        }    
+    }
+}
+
+impl<T> Drop for GlobalLocked<T> {
+    fn drop(&mut self) {
+        unsafe {
+            kernel32::GlobalUnlock(self.h_global);
+        }
+    }    
+}
+
+struct LocalFreeable<T> {
+    value : *mut T
+}
+
+impl<T> LocalFreeable<T> {
+    pub fn new(local : *mut T) -> LocalFreeable<T> { 
+            return LocalFreeable {
+                value : local
+            };  
+    }
+}
+
+impl<T> Drop for LocalFreeable<T> {
+    fn drop(&mut self) {
+        unsafe {
+            kernel32::LocalFree(self.value as *mut _);
+        }
+    }    
+}
 
 // //---------------------------------------------------------------------------
 
-unsafe fn get_error_message(message: &Vec<u16>) -> (DWORD, &Vec<u16>)
+unsafe fn get_error_message(message: &Vec<u16>) -> (DWORD, Vec<u16>)
 {
     // Retrieve the system error message for the last-error code
 
-//     LPVOID lpMsgBuf;
-    let dw = kernel32::GetLastError(); 
+    let dw = kernel32::GetLastError();
+    let lpMsgBuf : winapi::LPWSTR = std::ptr::null_mut();
 
-//     FormatMessageW(
-//         FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-//         FORMAT_MESSAGE_FROM_SYSTEM |
-//         FORMAT_MESSAGE_IGNORE_INSERTS,
-//         NULL,
-//         dw,
-//         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-//         (LPTSTR) &lpMsgBuf,
-//         0, NULL );
+    kernel32::FormatMessageW(
+        winapi::FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+        winapi::FORMAT_MESSAGE_FROM_SYSTEM |
+        winapi::FORMAT_MESSAGE_IGNORE_INSERTS,
+        std::ptr::null_mut(),
+        dw,
+        winapi::winnt::MAKELANGID(winapi::LANG_NEUTRAL, winapi::SUBLANG_DEFAULT) as DWORD,
+        lpMsgBuf,
+        0,
+        std::ptr::null_mut() );
 
-//     std::unique_ptr<wchar_t, void(__cdecl*)(wchar_t*)> buffer(
-//         reinterpret_cast<wchar_t *>(lpMsgBuf), local_free<wchar_t>);
+    let buffer = LocalFreeable::new(lpMsgBuf);
 
-//     message += buffer.get();
-    return (dw, message); 
+    // Drop trailing nulls
+    let affix = (0..).map(|i| *buffer.value.offset(i)).take_while(|c : &u16| *c != 0);
+    let prefix = message.iter().take_while(|c : &&u16| **c != 0).map(|c| *c);
+
+    // concat and null terminate
+    let tmp = prefix.chain(affix).chain(iter::once(0)).collect();
+    return (dw, tmp);
 }
 
 fn widen(text : &str) -> Vec<u16> {
@@ -116,7 +147,11 @@ fn widen(text : &str) -> Vec<u16> {
 unsafe fn raise_error_message(message: &Vec<u16>)
 {
      let (dw,message_x) = get_error_message(message);
-     user32::MessageBoxW(std::ptr::null_mut(), message_x.as_ptr(), widen(APPNAME).as_ptr(), winapi::MB_ICONERROR);
+     user32::MessageBoxW(
+         std::ptr::null_mut(), 
+         message_x.as_ptr(), 
+         widen(APPNAME).as_ptr(), 
+         winapi::MB_ICONERROR);
      std::process::exit(dw as i32); 
 }
 
@@ -130,6 +165,24 @@ unsafe fn raise_error_message(message: &Vec<u16>)
 //         if ((++count)%2) sink += L" ";
 //     });
 // }
+
+pub unsafe extern "system" fn enum_font_families_x_proc( 
+    lpelfe: *const winapi::wingdi::LOGFONTW, 
+    _lpntme: *const winapi::winnt::VOID, 
+    _font_type : DWORD,
+    l_param: LPARAM) -> std::os::raw::c_int
+    {
+        let back_channel = l_param as *mut winapi::wingdi::LOGFONTW;
+        let elfstyle = (*(lpelfe as *const winapi::wingdi::ENUMLOGFONTEXW)).elfStyle;
+
+        if widen("Regular").iter().zip(elfstyle.iter()).all(|(l, r)| l == r)
+        {
+            *back_channel = *lpelfe;
+        }
+
+        return  if (*back_channel).lfFaceName[0] == 0 {1} else {0};
+}
+
 
 //---------------------------------------------------------------------------
 pub unsafe extern "system" fn window_proc(h_wnd: HWND,
@@ -180,46 +233,56 @@ pub unsafe extern "system" fn window_proc(h_wnd: HWND,
                 raise_error_message(& widen("Could not get system parameter info - "));
                 return 0;
             }
-            
-        //     disposeable<HDC> context(GetDC( NULL ), [] (HDC dc) {ReleaseDC( NULL, dc );});
 
-        //     LOGFONTW probe;
-        //     probe.lfFaceName[0] = L'\0';
-        //     probe.lfCharSet = ANSI_CHARSET;
+            let context = Hdc { dc : user32::GetDC(std::ptr::null_mut()) };
 
-        //     LOGFONTW result;
-        //     result.lfFaceName[0] = L'\0';
+            let mut probe : winapi::wingdi::LOGFONTW = std::mem::uninitialized();
+            probe.lfFaceName[0] = 0;
+            probe.lfCharSet = winapi::ANSI_CHARSET as u8;
 
-        //     // Find a monospace font
-        //     std::wstring faces[4] = { L"Inconsolata", L"Consolas", L"Lucida Console", L"Courier New" };
+            let mut result : winapi::wingdi::LOGFONTW = std::mem::uninitialized();
+            result.lfFaceName[0] = 0;
 
-        //     boost::find_if(faces, [&result, &probe, &context] (std::wstring face) -> bool {
-        //         HRESULT hr = StringCchCopyW(probe.lfFaceName, LF_FACESIZE, face.c_str() );
-        //         if (!FAILED(hr))
-        //         {
-        //             EnumFontFamiliesExW( context(), &probe, reinterpret_cast<FONTENUMPROC>(EnumFontFamiliesExProc), reinterpret_cast<LPARAM>(&result), 0 );
-        //             return !!result.lfFaceName[0];
-        //         }
+            // Find a monospace font
+            let faces = [widen("Inconsolata"), widen("Consolas"), widen("Lucida Console"), widen("Courier New") ];
 
-        //         return false;
-        //     });
+            faces.iter().find(|face : &&Vec<u16>| -> bool {
+                if face.len() > winapi::LF_FACESIZE 
+                {
+                    return false;
+                }
+                for pair in face.iter().enumerate()
+                {
+                    let (i, val) = pair;
+                    probe.lfFaceName[i] = *val;
+                }
+                gdi32::EnumFontFamiliesExW( 
+                    context.dc, 
+                    &mut probe  as *mut _, 
+                    Some(enum_font_families_x_proc), 
+                    &mut result as *mut _ as LPARAM,
+                    0);
+                return result.lfFaceName[0] != 0;
+            });
 
-        //     // copy the sizes over
-        //     if (result.lfFaceName[0])
-        //     {
-        //         result.lfHeight = metrics.lfMessageFont.lfHeight;
-        //         result.lfWidth = metrics.lfMessageFont.lfWidth;
-        //     }
+            // copy the sizes over
+            if result.lfFaceName[0] != 0
+            {
+                result.lfHeight = metrics.lfMessageFont.lfHeight;
+                result.lfWidth = metrics.lfMessageFont.lfWidth;
+            }
 
-        //     // And set the monospaced font
-        //     HFONT hfont = CreateFontIndirectW(
-        //         result.lfFaceName[0] ?
-        //         &result:                
-        //         &metrics.lfMessageFont); 
+            // And set the monospaced font
+            let hfont = gdi32::CreateFontIndirectW(
+                if result.lfFaceName[0]  != 0
+                {&result}
+                else                
+                {&metrics.lfMessageFont}); 
 
-        //     SendMessageW(client, WM_SETFONT,
-        //         reinterpret_cast<WPARAM>(hfont),
-        //         0);
+            user32::SendMessageW(client, 
+                winapi::WM_SETFONT,
+                hfont as WPARAM,
+                0);
         }
 
         user32::SetWindowTextW(client, widen("Drop files to hash").as_ptr() as *mut _);
@@ -293,10 +356,9 @@ pub unsafe extern "system" fn window_proc(h_wnd: HWND,
 
         winapi::winuser:: WM_DROPFILES => 
         {
-            // WaitCursor waiter;
-            // waiter;
+            let _waiter = WaitCursor::new(); // leading _ for "unused by design"
+            let canvas = user32::GetWindow(h_wnd, winapi::GW_CHILD);
 
-            // HWND canvas = client;
             // auto lambda = [canvas] (std::wstring * str) { 
             //             *str += L"\r\n";
             //             SetWindowText(canvas, str->c_str()); 
