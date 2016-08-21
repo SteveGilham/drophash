@@ -7,6 +7,7 @@ extern crate gdi32;
 extern crate winapi;
 extern crate libc;
 
+use std::io::Write;
 use std::iter;
 
 use winapi::windef::HDC;
@@ -24,7 +25,13 @@ use winapi::minwindef::LPARAM;
 use winapi::minwindef::LRESULT;
 use winapi::minwindef::HGLOBAL;
 
+use winapi::winnt::LPWSTR;
 use winapi::winnt::LPCWSTR;
+
+extern "system" {
+    pub fn CommandLineToArgvW(lp_cmd_line : LPWSTR, p_num_args : *mut libc::c_int) 
+        -> *const LPWSTR;
+}
 
 const APPNAME: &'static str = "DropHash2016";
 
@@ -116,7 +123,7 @@ unsafe fn get_error_message(message: &Vec<u16>) -> (DWORD, Vec<u16>)
     // Retrieve the system error message for the last-error code
 
     let dw = kernel32::GetLastError();
-    let lpMsgBuf : winapi::LPWSTR = std::ptr::null_mut();
+    let message_buffer : winapi::LPWSTR = std::ptr::null_mut();
 
     kernel32::FormatMessageW(
         winapi::FORMAT_MESSAGE_ALLOCATE_BUFFER | 
@@ -125,11 +132,11 @@ unsafe fn get_error_message(message: &Vec<u16>) -> (DWORD, Vec<u16>)
         std::ptr::null_mut(),
         dw,
         winapi::winnt::MAKELANGID(winapi::LANG_NEUTRAL, winapi::SUBLANG_DEFAULT) as DWORD,
-        lpMsgBuf,
+        message_buffer,
         0,
         std::ptr::null_mut() );
 
-    let buffer = LocalFreeable::new(lpMsgBuf);
+    let buffer = LocalFreeable::new(message_buffer);
 
     // Drop trailing nulls
     let affix = (0..).map(|i| *buffer.value.offset(i)).take_while(|c : &u16| *c != 0);
@@ -140,8 +147,8 @@ unsafe fn get_error_message(message: &Vec<u16>) -> (DWORD, Vec<u16>)
     return (dw, tmp);
 }
 
-fn widen(text : &str) -> Vec<u16> {
-    return text.encode_utf16().chain(iter::once(0)).collect();
+fn widen(in_text : &str) -> Vec<u16> {
+    return in_text.encode_utf16().chain(iter::once(0)).collect();
 }
 
 unsafe fn raise_error_message(message: &Vec<u16>)
@@ -155,16 +162,14 @@ unsafe fn raise_error_message(message: &Vec<u16>)
      std::process::exit(dw as i32); 
 }
 
-// static void format_hex_string(std::vector<BYTE> & buffer, std::wstring & sink)
-// {
-//     boost::wformat hex(L"%02x");
-//     boost::for_each(buffer, [&hex, &sink] (BYTE x) {
-//         static int count = 1;
-//         hex % x;
-//         sink += hex.str();  
-//         if ((++count)%2) sink += L" ";
-//     });
-// }
+fn format_hex_string(buffer : Vec<u8>) -> Vec<u8> {
+    let mut w = Vec::new();
+    for chunk in buffer.chunks(2) {
+      let _sink = write!(&mut w, "{:02x}{:02x} ", chunk[0], chunk[1]);
+    }
+    
+    return w;
+}
 
 pub unsafe extern "system" fn enum_font_families_x_proc( 
     lpelfe: *const winapi::wingdi::LOGFONTW, 
@@ -183,6 +188,8 @@ pub unsafe extern "system" fn enum_font_families_x_proc(
         return  if (*back_channel).lfFaceName[0] == 0 {1} else {0};
 }
 
+pub static mut text : &'static str = "Drop files to hash";
+pub static mut client : HWND = 0 as HWND;
 
 //---------------------------------------------------------------------------
 pub unsafe extern "system" fn window_proc(h_wnd: HWND,
@@ -194,14 +201,13 @@ pub unsafe extern "system" fn window_proc(h_wnd: HWND,
         winapi::winuser::WM_CREATE => {
         let pcs = ::std::mem::transmute::<::winapi::LPARAM,
             *const ::winapi::CREATESTRUCTW>(l_param);
-        let client = user32::CreateWindowExW(0, widen("edit").as_ptr(), std::ptr::null_mut(),
+        client = user32::CreateWindowExW(0, widen("edit").as_ptr(), std::ptr::null_mut(),
             winapi::WS_CHILD|winapi::WS_VISIBLE|winapi::WS_HSCROLL|winapi::WS_VSCROLL|winapi::WS_BORDER|winapi::ES_LEFT|
             winapi::ES_MULTILINE|winapi::ES_AUTOHSCROLL|winapi::ES_AUTOVSCROLL|winapi::ES_READONLY,
             0,0,0,0, h_wnd, 
             1 as HMENU,
             (*pcs).hInstance,
             std::ptr::null_mut());
-
             
         {
             // System font for size
@@ -285,14 +291,16 @@ pub unsafe extern "system" fn window_proc(h_wnd: HWND,
                 0);
         }
 
-        user32::SetWindowTextW(client, widen("Drop files to hash").as_ptr() as *mut _);
-        //text.clear();
+        user32::SetWindowTextW(client, widen(text).as_ptr() as *mut _);
+        text = "";
 
-        // // Synthetic drop on activation
-        // {
-        //     int nArgs;
+        // Synthetic drop on activation
+        {
+            let command_line = kernel32::GetCommandLineW();
+            let mut n_args : libc::c_int = 0;
+            let arg_list = CommandLineToArgvW(command_line, &mut n_args as *mut _);
 
-        //     LPWSTR *szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+            if n_args > 1 {
         //     if (szArglist && nArgs > 1)
         //     {
         //         std::unique_ptr<LPWSTR, void(__cdecl*)(LPWSTR*)> buffer(
@@ -336,28 +344,25 @@ pub unsafe extern "system" fn window_proc(h_wnd: HWND,
         //             // send DnD event
         //             PostMessage(hwnd, WM_DROPFILES, (WPARAM)hGlobal, 0);
         //         }
-        //     }
-        // }
-            return 0
+            }
+          }
+            return 0;
         }
 
         winapi::winuser::WM_SETFOCUS => {
-            let client = user32::GetWindow(h_wnd, winapi::GW_CHILD);
             user32::SetFocus(client);
             return 0;
         }
 
         winapi::winuser::WM_SIZE => {
-            let client = user32::GetWindow(h_wnd, winapi::GW_CHILD);
             user32::MoveWindow(client, 0,0, winapi::minwindef::LOWORD(l_param as DWORD) as i32,
                 winapi::minwindef::HIWORD(l_param as DWORD) as i32, 1 as BOOL);
             return 0;
         }
 
-        winapi::winuser:: WM_DROPFILES => 
+        winapi::winuser::WM_DROPFILES => 
         {
             let _waiter = WaitCursor::new(); // leading _ for "unused by design"
-            let canvas = user32::GetWindow(h_wnd, winapi::GW_CHILD);
 
             // auto lambda = [canvas] (std::wstring * str) { 
             //             *str += L"\r\n";
