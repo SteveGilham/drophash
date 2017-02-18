@@ -185,6 +185,7 @@
     <Text Include="abc.txt" />
     <Text Include="alpha.txt" />
     <Text Include="empty.txt" />
+    <Text Include="Expect.txt" />
     <Text Include="longTestVector.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -46,5 +46,6 @@
     <Text Include="longTestVector.txt" />
     <Text Include="abc.txt" />
     <Text Include="alpha.txt" />
+    <Text Include="Expect.txt" />
   </ItemGroup>
 </Project>

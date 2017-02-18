@@ -5,7 +5,7 @@
 
 LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define MAINCLASS TEXT("DropHashClass")
-#define APPNAME   TEXT("DropHash2012")
+#define APPNAME   TEXT("DropHash2015+")
 
 //---------------------------------------------------------------------------
 template<class _Ty> class disposable {
@@ -78,6 +78,7 @@ public:
 template<typename T> void local_free(T * value) { LocalFree(reinterpret_cast<HLOCAL>(value)); value = nullptr; }
 
 //---------------------------------------------------------------------------
+static std::wstring text(L"Drop files to hash");
 
 static DWORD get_error_message(std::wstring & message)
 {
@@ -87,21 +88,29 @@ static DWORD get_error_message(std::wstring & message)
     DWORD dw = GetLastError(); 
 
 #pragma warning (suppress : 26490) // safe reinterpret_cast
-    FormatMessageW(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+    if (FormatMessageW(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
         FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL,
         dw,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
         reinterpret_cast<LPTSTR>(&lpMsgBuf),
-        0, NULL );
-
+        0, NULL))
+    {
 #pragma warning (suppress : 26490) // safe reinterpret_cast
-    std::unique_ptr<wchar_t, void(__cdecl*)(wchar_t*)> buffer(
-        reinterpret_cast<wchar_t *>(lpMsgBuf), local_free<wchar_t>);
+        std::unique_ptr<wchar_t, void(__cdecl*)(wchar_t*)> buffer(
+            reinterpret_cast<wchar_t *>(lpMsgBuf), local_free<wchar_t>);
 
-    message += buffer.get();
+        message += buffer.get();
+    }
+    else
+    {
+        std::array<wchar_t, 128> buffer{ 0 };
+        swprintf_s(&buffer[0], buffer.size(), L"Error %x\n", dw);
+        message += &buffer[0];
+    }
+
     return dw; 
 }
 
@@ -166,10 +175,10 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
-    return msg.wParam;
+    return msg.wParam != 0;
 }
 
-int CALLBACK EnumFontFamiliesExProc( ENUMLOGFONTEXW *lpelfe, NEWTEXTMETRICEXW *lpntme, int FontType, LPARAM lParam )
+int CALLBACK EnumFontFamiliesExProc( ENUMLOGFONTEXW *lpelfe, NEWTEXTMETRICEXW *, int, LPARAM lParam )
 {
 #pragma warning (suppress : 26490) // safe reinterpret_cast
     auto back_channel = reinterpret_cast<LOGFONTW*>(lParam);
@@ -188,7 +197,6 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 WPARAM wParam, LPARAM lParam)
 {
     static HWND client;
-    static std::wstring text(L"Drop files to hash");
     const LRESULT handled{ 0 };
 
     switch(message)
@@ -299,7 +307,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
 #pragma warning (suppress : 26490) // safe reinterpret_cast
                             LPDROPFILES pDropFiles = reinterpret_cast<LPDROPFILES>(memory.get());
-                            pDropFiles->pFiles = header;
+                            pDropFiles->pFiles = gsl::narrow<DWORD>(header);
                             pDropFiles->fWide = TRUE;
                             pDropFiles->pt.x = pDropFiles->pt.y = 0;
                             pDropFiles->fNC = FALSE;
@@ -311,7 +319,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
                             std::for_each(args.begin(), args.end(), [&buffer, &end](LPWSTR in) {
 #pragma warning (suppress : 26499)
-                                wcscpy_s(buffer, end - buffer, in);
+                                wcscpy_s(buffer, gsl::narrow<rsize_t>(end - buffer), in);
                                 std::advance(buffer, (wcslen(in) + 1));
                             });
 
