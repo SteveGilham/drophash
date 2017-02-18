@@ -4,11 +4,13 @@
 //
 
 #pragma once
-
+#pragma warning (disable : 4710 4711)
 
 // #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files:
-#pragma warning (disable : 4995)
+#pragma warning (push, 1)
+#pragma warning (disable : 4355 4917)
+#include <gsl.h>
 #include <windows.h>
 #include <Shlobj.h>
 #include <Strsafe.h>
@@ -16,17 +18,12 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <memory>
 #include <string>
 #include <vector>
+#include <array>
 
 #include "Resource.h"
-
-#include "boost/any.hpp"
-#include "boost/cast.hpp"
-#include "boost/format.hpp"
-#include "boost/lexical_cast.hpp"
-#include "boost/noncopyable.hpp"
-#include "boost/range/algorithm.hpp"
-#include "boost/tuple/tuple.hpp"
-#pragma warning (default : 4995)
+#pragma warning (pop)

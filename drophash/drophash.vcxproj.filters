@@ -18,6 +18,7 @@
     <None Include="drophash.ico">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="drophash.h">
@@ -39,5 +40,11 @@
     <ResourceCompile Include="drophash.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="empty.txt" />
+    <Text Include="longTestVector.txt" />
+    <Text Include="abc.txt" />
+    <Text Include="alpha.txt" />
   </ItemGroup>
 </Project>

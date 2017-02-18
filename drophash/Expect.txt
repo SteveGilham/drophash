@@ -1,0 +1,22 @@
+Dropped 2 files
+C:\Users\steve\hg\drophash\drophash\alpha.txt
+MD5     : 8215 ef07 96a2 0bca aae1 16d3 876c 664a 
+SHA     : 8498 3e44 1c3b d26e baae 4aa1 f951 29e5 e546 70f1 
+SHA2-256: 248d 6a61 d206 38b8 e5c0 2693 0c3e 6039 a33c e459 64ff 2167 f6ec edd4 19db 06c1 
+
+C:\Users\steve\hg\drophash\drophash\abc.txt
+MD5     : 9001 5098 3cd2 4fb0 d696 3f7d 28e1 7f72 
+SHA     : a999 3e36 4706 816a ba3e 2571 7850 c26c 9cd0 d89d 
+SHA2-256: ba78 16bf 8f01 cfea 4141 40de 5dae 2223 b003 61a3 9617 7a9c b410 ff61 f200 15ad 
+
+
+Dropped 2 files
+C:\Users\steve\hg\drophash\drophash\empty.txt
+MD5     : d41d 8cd9 8f00 b204 e980 0998 ecf8 427e 
+SHA     : da39 a3ee 5e6b 4b0d 3255 bfef 9560 1890 afd8 0709 
+SHA2-256: e3b0 c442 98fc 1c14 9afb f4c8 996f b924 27ae 41e4 649b 934c a495 991b 7852 b855 
+
+C:\Users\steve\hg\drophash\drophash\longTestVector.txt
+MD5     : 57ed f4a2 2be3 c955 ac49 da2e 2107 b67a 
+SHA     : 50ab f570 6a15 0990 a08b 2c5e a40f a0e5 8555 4732 
+SHA2-256: f371 bc4a 311f 2b00 9eef 952d d83c a80e 2b60 026c 8e93 5592 d0f9 c308 453c 813e 
