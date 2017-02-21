@@ -7,72 +7,6 @@ LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define MAINCLASS TEXT("DropHashClass")
 #define APPNAME   TEXT("DropHash2015+")
 
-//---------------------------------------------------------------------------
-template<class _Ty> class disposable {
-private:
-    template<class _Uy> class disposalbase
-    {
-        disposalbase(const disposalbase &) = delete;
-        disposalbase & operator= (const disposalbase &) = delete;
-    public:
-        _Uy object;
-        disposalbase(_Uy _Ut) : object{ _Ut } {}
-        virtual ~disposalbase() {}
-    };
-    template<class _Uy,
-        class _Dy> class disposer  : public disposalbase<_Uy> {
-        _Dy deleter;
-        public:
-            disposer(_Uy _Ut, _Dy _Dt) : disposalbase{ _Ut }, deleter{ _Dt } {}
-            ~disposer() { deleter(object); }
-#pragma warning(suppress : 4820)
-    };
-    std::unique_ptr<disposalbase<_Ty>> disposal;
-
-    disposable(const disposable &) = delete;
-    disposable & operator= (const disposable &) = delete;
-
-public:
-    template<class _Ty, class _Dx>
-#pragma warning (suppress : 4868 26424) // evaluation of arguments is not order dependent; ownership is immediate
-    disposable(_Ty _X, _Dx _Dt) : disposal{ new disposer<_Ty, _Dx>{ _X, _Dt } } {}
-    _Ty operator()(void) const { return disposal->object; }
-    ~disposable() { }
-};
-
-class WaitCursor {
-private:
-    HCURSOR cursor;
-    WaitCursor(const WaitCursor &) = delete;
-    WaitCursor & operator= (const WaitCursor &) = delete;
-public:
-    WaitCursor() { 
-        cursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
-        ShowCursor(TRUE); 
-    }
-    ~WaitCursor() { 
-        ShowCursor(FALSE); 
-        SetCursor(cursor);
-        ShowCursor(TRUE); 
-    }
-};
-
-class GlobalLocked {
-private:
-    HGLOBAL hGlobal;
-    void * value;
-    GlobalLocked(const GlobalLocked &) = delete;
-    GlobalLocked & operator= (const GlobalLocked &) = delete;
-public:
-    GlobalLocked(HGLOBAL _hGlobal) : hGlobal(_hGlobal) {
-        value = GlobalLock(hGlobal);
-    }
-    void * get(void) const { return value; }
-    ~GlobalLocked() {
-        GlobalUnlock(hGlobal);
-    }
-};
-
 // simplifies unique_ptr declaration -- can we get rid of it?
 #pragma warning (suppress : 26490 26499) // safe reinterpret_cast to void*
 template<typename T> void local_free(T * value) { LocalFree(reinterpret_cast<HLOCAL>(value)); value = nullptr; }
@@ -80,12 +14,26 @@ template<typename T> void local_free(T * value) { LocalFree(reinterpret_cast<HLO
 //---------------------------------------------------------------------------
 static std::wstring text(L"Drop files to hash");
 
+static HCURSOR Wait()
+{
+    auto cursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
+    ShowCursor(TRUE);
+    return cursor;
+}
+
+static void Unwait(HCURSOR cursor) 
+{
+    ShowCursor(FALSE);
+    SetCursor(cursor);
+    ShowCursor(TRUE);
+}
+
 static DWORD get_error_message(std::wstring & message)
 {
     // Retrieve the system error message for the last-error code
 
     LPVOID lpMsgBuf{ nullptr };
-    DWORD dw = GetLastError(); 
+    DWORD dw{ GetLastError() };
 
 #pragma warning (suppress : 26490) // safe reinterpret_cast
     if (FormatMessageW(
@@ -116,14 +64,14 @@ static DWORD get_error_message(std::wstring & message)
 
 static void raise_error_message(std::wstring & message)
 {
-    DWORD dw = get_error_message(message);
+    DWORD dw{ get_error_message(message) };
     MessageBoxW(NULL, message.c_str(), APPNAME, MB_ICONERROR);
     ExitProcess(dw); 
 }
 
 static void format_hex_string(std::vector<BYTE> & buffer, std::wstring & sink)
 {
-    std::wstringstream stream;
+    std::wstringstream stream{};
     std::for_each(buffer.begin(), buffer.end(), [&stream] (BYTE x) {
         static int count = 1;
         stream << std::setfill(L'0') << std::setw(2) << std::hex << x;
@@ -139,7 +87,7 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
     _In_ LPSTR,
     _In_ int show)
 {
-    WNDCLASS wndclass;
+    WNDCLASS wndclass{};
     wndclass.style = CS_HREDRAW | CS_VREDRAW;
     wndclass.lpfnWndProc = reinterpret_cast<WNDPROC>(MainWndProc);
     wndclass.cbClsExtra =
@@ -159,7 +107,7 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
         return 0;
     }
 
-    HWND hmain = CreateWindowExW(WS_EX_ACCEPTFILES,MAINCLASS, APPNAME,
+    auto hmain = CreateWindowExW(WS_EX_ACCEPTFILES,MAINCLASS, APPNAME,
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
@@ -169,7 +117,7 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
     ShowWindow(hmain, show);
     UpdateWindow(hmain);
 
-    MSG msg;
+    MSG msg{};
     while(GetMessageW(&msg, NULL, 0, 0))
     {
         TranslateMessage(&msg);
@@ -181,9 +129,9 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
 int CALLBACK EnumFontFamiliesExProc( ENUMLOGFONTEXW *lpelfe, NEWTEXTMETRICEXW *, int, LPARAM lParam )
 {
 #pragma warning (suppress : 26490) // safe reinterpret_cast
-    auto back_channel = reinterpret_cast<LOGFONTW*>(lParam);
+    auto back_channel{ reinterpret_cast<LOGFONTW*>(lParam) };
 #pragma warning (suppress : 26490) // safe reinterpret_cast
-    auto found = reinterpret_cast<LOGFONTW*>(lpelfe);
+    auto found{ reinterpret_cast<LOGFONTW*>(lpelfe) };
 #pragma warning (suppress : 26499)
         if (!wcscmp(&lpelfe->elfStyle[0], L"Regular"))
         {
@@ -215,9 +163,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
             {
                 // System font for size
-                NONCLIENTMETRICSW metrics = { sizeof(NONCLIENTMETRICSW) };
+                NONCLIENTMETRICSW metrics{ sizeof(NONCLIENTMETRICSW) };
 #pragma warning (suppress : 26490) // safe reinterpret_cast
-                BOOL status = SystemParametersInfoW(
+                auto status = SystemParametersInfoW(
                     SPI_GETNONCLIENTMETRICS,
                     metrics.cbSize,
                     reinterpret_cast<void*>(&metrics),
@@ -229,25 +177,31 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     return handled;
                 }
 
-                disposable<HDC> context{ GetDC(NULL), [](HDC dc) {ReleaseDC(NULL, dc);} };
+                auto context = GetDC(NULL);
+#pragma warning (suppress : 26499) // no useful mitigation
+                auto resetDC = gsl::finally([&context]() {ReleaseDC(NULL, context);});
 
-                LOGFONTW probe;
+                LOGFONTW probe{};
                 probe.lfFaceName[0] = L'\0';
                 probe.lfCharSet = ANSI_CHARSET;
 
-                LOGFONTW result;
+                LOGFONTW result{};
                 result.lfFaceName[0] = L'\0';
 
                 // Find a monospace font
                 std::array<std::wstring, 4> faces{ L"Inconsolata", L"Consolas", L"Lucida Console", L"Courier New" };
 
                 std::find_if(faces.begin(), faces.end(), [&result, &probe, &context](std::wstring face) -> bool {
-#pragma warning (suppress : 26499)
-                    HRESULT hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
+#pragma warning (suppress : 26499) // no useful mitigation
+                    auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
                     if (!FAILED(hr))
                     {
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-                        EnumFontFamiliesExW(context(), &probe, reinterpret_cast<FONTENUMPROC>(EnumFontFamiliesExProc), reinterpret_cast<LPARAM>(&result), 0);
+#pragma warning (suppress : 26490 26499) // safe reinterpret_cast
+                        EnumFontFamiliesExW(
+                            context, 
+                            &probe, 
+                            reinterpret_cast<FONTENUMPROC>(EnumFontFamiliesExProc), 
+                            reinterpret_cast<LPARAM>(&result), 0);
                         return !!result.lfFaceName[0];
                     }
 
@@ -262,7 +216,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 }
 
                 // And set the monospaced font
-                HFONT hfont = CreateFontIndirectW(
+                auto hfont = CreateFontIndirectW(
                     result.lfFaceName[0] ?
                     &result :
                     &metrics.lfMessageFont);
@@ -279,53 +233,55 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
             // Synthetic drop on activation
             {
-                int nArgs;
+                int nArgs{ 0 };
 
-                LPWSTR *szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+                auto szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
                 if (szArglist && nArgs > 1)
                 {
-                    std::unique_ptr<LPWSTR, void(__cdecl*)(LPWSTR*)> buffer(
-                        szArglist, local_free<LPWSTR>);
+#pragma warning (suppress : 26499) // no useful mitigation
+                    auto releaseArgs = gsl::finally([&szArglist](){local_free<gsl::wzstring<>>(szArglist);});
 
                     // Skip the executable name
-                    gsl::span<LPWSTR> args{ std::next(szArglist), std::next(szArglist, nArgs) };
+                    gsl::span<gsl::wzstring<>> args{ std::next(szArglist), std::next(szArglist, nArgs) };
 
                     // pointer arithmetic, yuck!!
-                    SIZE_T wideheader = (sizeof(DROPFILES) + sizeof(wchar_t) - 1) / sizeof(wchar_t);
-                    SIZE_T header = wideheader * sizeof(wchar_t);
-                    SIZE_T buffersize = header;
+                    SIZE_T wideheader{ (sizeof(DROPFILES) + sizeof(wchar_t) - 1) / sizeof(wchar_t) };
+                    SIZE_T header{ wideheader * sizeof(wchar_t) };
+                    SIZE_T buffersize{ header };
 
-                    std::for_each(args.begin(), args.end(), [&buffersize](LPWSTR in) {
+                    std::for_each(args.begin(), args.end(), [&buffersize](gsl::wzstring<> in) {
                         buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
                     });
 
-                    HGLOBAL hGlobal = GlobalAlloc(GHND | GMEM_SHARE, buffersize);
+                    auto hGlobal = GlobalAlloc(GHND | GMEM_SHARE, buffersize);
                     if (hGlobal)
                     {
-                        {
-                            GlobalLocked memory(hGlobal);
+                        void * memory = GlobalLock(hGlobal);
+                        auto unlock = gsl::finally([&hGlobal]() {GlobalUnlock(hGlobal);});
 
 #pragma warning (suppress : 26490) // safe reinterpret_cast
-                            LPDROPFILES pDropFiles = reinterpret_cast<LPDROPFILES>(memory.get());
-                            pDropFiles->pFiles = gsl::narrow<DWORD>(header);
-                            pDropFiles->fWide = TRUE;
-                            pDropFiles->pt.x = pDropFiles->pt.y = 0;
-                            pDropFiles->fNC = FALSE;
+                        gsl::span<wchar_t> characters{
+                            reinterpret_cast<wchar_t*>(memory),
+                            gsl::narrow<int>(buffersize / sizeof(wchar_t))
+                        };
 
 #pragma warning (suppress : 26490) // safe reinterpret_cast
-                            wchar_t * buffer{ std::next(reinterpret_cast<wchar_t *>(memory.get()), wideheader) };
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-                            wchar_t * end{ std::next(reinterpret_cast<wchar_t *>(memory.get()), (buffersize / sizeof(wchar_t))) };
+                        auto pDropFiles = reinterpret_cast<LPDROPFILES>(&characters[0]);
+                        pDropFiles->pFiles = gsl::narrow<DWORD>(header);
+                        pDropFiles->fWide = TRUE;
+                        pDropFiles->pt.x = pDropFiles->pt.y = 0;
+                        pDropFiles->fNC = FALSE;
 
-                            std::for_each(args.begin(), args.end(), [&buffer, &end](LPWSTR in) {
-#pragma warning (suppress : 26499)
-                                wcscpy_s(buffer, gsl::narrow<rsize_t>(end - buffer), in);
-                                std::advance(buffer, (wcslen(in) + 1));
-                            });
+                        auto buffer{ characters.begin() };
+                        std::advance(buffer, wideheader);
+                        auto end{ characters.end() };
 
-#pragma warning (suppress : 26401) // buffer is not set to nullptr above despite what the rule claims
-                            *buffer = L'\0';
-                        }
+                        std::for_each(args.begin(), args.end(), [&buffer, &end](gsl::wzstring<> in) {
+                            wcscpy_s(&buffer[0], gsl::narrow<rsize_t>(end - buffer), in);
+                            std::advance(buffer, (wcslen(in) + 1));
+                        });
+
+                        *buffer = L'\0';
 
                         // send DnD event
 #pragma warning (suppress : 26490) // safe reinterpret_cast
@@ -354,19 +310,22 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
         case WM_DROPFILES:
         {
-            WaitCursor waiter{};
+            auto cursor = Wait();
+            auto unwait = gsl::finally([&cursor]() {Unwait(cursor);});
 
-            HWND canvas = client;
+            auto canvas{ client };
             auto lambda = [canvas] (std::wstring * str) { 
                         *str += L"\r\n";
                         SetWindowText(canvas, str->c_str()); 
                         };
-            std::unique_ptr<std::wstring, decltype(lambda)> data(&text, lambda);
+            std::unique_ptr<std::wstring, decltype(lambda)> data{ &text, lambda };
 
 #pragma warning (suppress : 26490) // safe reinterpret_cast
-            disposable<HDROP> drop{ reinterpret_cast<HDROP>(wParam), &DragFinish };
+            auto drop = reinterpret_cast<HDROP>(wParam);
+#pragma warning (suppress : 26499) // no useful mitigation
+            auto finishDrag = gsl::finally([&drop]() { DragFinish(drop); });
 
-            UINT nfiles = DragQueryFileW(drop(), 0xFFFFFFFF, nullptr, 0);
+            UINT nfiles = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
 
             *data += L"Dropped "+ std::to_wstring(nfiles) + 
                    L" files\r\n";
@@ -384,14 +343,14 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             }
 
             // and manage its lifetime
-            disposable<HCRYPTPROV> provider{ hProv, [](HCRYPTPROV prov) {CryptReleaseContext(prov, 0);} };
+            auto releaseContext = gsl::finally([&hProv]() {CryptReleaseContext(hProv, 0);});
 
             // Now hash each file in turn
             for(UINT i = 0; i < nfiles; ++i)
             {
-                UINT length = DragQueryFileW(drop(), i, nullptr, 0);
+                UINT length = DragQueryFileW(drop, i, nullptr, 0);
                 std::vector<wchar_t> fn(length + 1);
-                DragQueryFileW(drop(), i, &fn[0], gsl::narrow<UINT>(fn.size()));
+                DragQueryFileW(drop, i, &fn[0], gsl::narrow<UINT>(fn.size()));
 
                 typedef std::tuple<std::wstring, DWORD, DWORD> Recipe;
                 typedef std::tuple<std::wstring, HCRYPTHASH, DWORD> Record;
@@ -404,8 +363,12 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 // ... add more hash algorithms here e.g. CALG_SHA_384 or CALG_SHA_512
 
                 std::vector<Record> results;
+                auto releaseResults = gsl::finally([&results]() {for (auto item : results)
+                {
+                    auto hash = std::get<1>(item);
+                    if (hash) { CryptDestroyHash(hash); }
+                }});
                 results.resize(inputs.size());
-                auto sink = results.begin();
 
                 std::transform(inputs.begin(), inputs.end(), results.begin(), [&hProv, &data] (Recipe in) -> Record {
                     HCRYPTHASH hHash = 0;
@@ -424,18 +387,11 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         std::get<2>(in));
                 });
 
-                disposable<std::vector<Record>*> hashes{ &results, [](std::vector<Record> * vec) {
-                    for (auto item : *vec)
-                    {
-                        auto hash = std::get<1>(item);
-                        if (hash) { CryptDestroyHash(hash); }
-                    }} };
-
                 *data += &fn[0];
                 *data += L"\r\n";
 
                 std::ifstream file(&fn[0], std::ios::in|std::ios::binary);
-                std::vector<char> chunk(4096);
+                std::array<char, 4096> chunk{};
                 if (file.is_open())
                 {
 
@@ -444,12 +400,12 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         file.read(&chunk[0], gsl::narrow<std::streamsize>(chunk.size()));
 
                         DWORD got = gsl::narrow<DWORD>(file.gcount());
+                        auto chunkBYTEs{ gsl::as_span<BYTE>(gsl::as_bytes(gsl::as_span(chunk))) };
 
                         auto check = 
-                            std::find_if(results.begin(), results.end(), [&data, &chunk, &got] (Record hash) -> bool {
+                            std::find_if(results.begin(), results.end(), [&data, &chunkBYTEs, &got] (Record hash) -> bool {
                             auto handle = std::get<1>(hash);
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-                            if (!handle || CryptHashData(handle, reinterpret_cast<BYTE*>(&chunk[0]), got, 0))
+                            if (!handle || CryptHashData(handle, &chunkBYTEs[0], got, 0))
                             {
                                 return false;
                             }

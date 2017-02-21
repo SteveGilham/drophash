@@ -9,7 +9,7 @@
 // #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files:
 #pragma warning (push, 1)
-#pragma warning (disable : 4355 4917)
+#pragma warning (disable : 4355 4917 4702 26400)
 #include <gsl.h>
 #include <windows.h>
 #include <Shlobj.h>
