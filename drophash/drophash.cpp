@@ -7,10 +7,6 @@ LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define MAINCLASS TEXT("DropHashClass")
 #define APPNAME   TEXT("DropHash2015+")
 
-// simplifies unique_ptr declaration -- can we get rid of it?
-#pragma warning (suppress : 26490 26499) // safe reinterpret_cast to void*
-template<typename T> void local_free(T * value) { LocalFree(reinterpret_cast<HLOCAL>(value)); value = nullptr; }
-
 //---------------------------------------------------------------------------
 static std::wstring text(L"Drop files to hash");
 
@@ -32,10 +28,10 @@ static DWORD get_error_message(std::wstring & message)
 {
     // Retrieve the system error message for the last-error code
 
-    LPVOID lpMsgBuf{ nullptr };
+    gsl::owner<gsl::wzstring<>> lpMsgBuf{ nullptr };
     DWORD dw{ GetLastError() };
 
-#pragma warning (suppress : 26490) // safe reinterpret_cast
+#pragma warning (suppress : 26490) // safe and necessary reinterpret_cast
     if (FormatMessageW(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
@@ -43,14 +39,13 @@ static DWORD get_error_message(std::wstring & message)
         NULL,
         dw,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        reinterpret_cast<LPTSTR>(&lpMsgBuf),
+        reinterpret_cast<LPWSTR>(&lpMsgBuf),
         0, NULL))
     {
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-        std::unique_ptr<wchar_t, void(__cdecl*)(wchar_t*)> buffer(
-            reinterpret_cast<wchar_t *>(lpMsgBuf), local_free<wchar_t>);
-
-        message += buffer.get();
+#pragma warning (suppress : 26499) // no useful mitigation
+        auto free_buffer = gsl::finally([&lpMsgBuf]() { LocalFree(lpMsgBuf);});
+#pragma warning (suppress : 26401) // can we convince the analyser that this is set?
+        message += *lpMsgBuf;
     }
     else
     {
@@ -126,16 +121,16 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
     return msg.wParam != 0;
 }
 
-int CALLBACK EnumFontFamiliesExProc( ENUMLOGFONTEXW *lpelfe, NEWTEXTMETRICEXW *, int, LPARAM lParam )
+int CALLBACK EnumFontFamiliesExProc(CONST LOGFONTW *lpelfe, CONST TEXTMETRICW *, DWORD, LPARAM lParam )
 {
 #pragma warning (suppress : 26490) // safe reinterpret_cast
     auto back_channel{ reinterpret_cast<LOGFONTW*>(lParam) };
 #pragma warning (suppress : 26490) // safe reinterpret_cast
-    auto found{ reinterpret_cast<LOGFONTW*>(lpelfe) };
-#pragma warning (suppress : 26499)
-        if (!wcscmp(&lpelfe->elfStyle[0], L"Regular"))
+    auto extended{ reinterpret_cast<const ENUMLOGFONTEXW*>(lpelfe) };
+
+        if (!wcscmp(&extended->elfStyle[0], L"Regular"))
         {
-            *back_channel = *found;
+            *back_channel = *lpelfe;
         }
 
         return !(back_channel->lfFaceName[0]);
@@ -151,7 +146,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
     {
         case WM_CREATE:
         {
-#pragma warning (suppress : 26490 26425 26499) // safe reinterpret_cast; deliberate assignment to static
+#pragma warning (suppress : 26490 26425 26499) // safe reinterpret_cast; deliberate assignment to static; lParam
             client = CreateWindowW(TEXT("edit"), NULL,
                 WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | WS_BORDER | ES_LEFT |
                 ES_MULTILINE | ES_AUTOHSCROLL | ES_AUTOVSCROLL | ES_READONLY,
@@ -164,11 +159,10 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             {
                 // System font for size
                 NONCLIENTMETRICSW metrics{ sizeof(NONCLIENTMETRICSW) };
-#pragma warning (suppress : 26490) // safe reinterpret_cast
                 auto status = SystemParametersInfoW(
                     SPI_GETNONCLIENTMETRICS,
                     metrics.cbSize,
-                    reinterpret_cast<void*>(&metrics),
+                    &metrics,
                     0);
                 if (!status)
                 {
@@ -199,9 +193,10 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 #pragma warning (suppress : 26490 26499) // safe reinterpret_cast
                         EnumFontFamiliesExW(
                             context, 
-                            &probe, 
-                            reinterpret_cast<FONTENUMPROC>(EnumFontFamiliesExProc), 
-                            reinterpret_cast<LPARAM>(&result), 0);
+                            &probe,
+                            EnumFontFamiliesExProc, 
+                            reinterpret_cast<LPARAM>(&result),
+                            0);
                         return !!result.lfFaceName[0];
                     }
 
@@ -239,7 +234,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 if (szArglist && nArgs > 1)
                 {
 #pragma warning (suppress : 26499) // no useful mitigation
-                    auto releaseArgs = gsl::finally([&szArglist](){local_free<gsl::wzstring<>>(szArglist);});
+                    auto releaseArgs = gsl::finally([&szArglist](){LocalFree(szArglist);});
 
                     // Skip the executable name
                     gsl::span<gsl::wzstring<>> args{ std::next(szArglist), std::next(szArglist, nArgs) };
@@ -257,6 +252,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     if (hGlobal)
                     {
                         void * memory = GlobalLock(hGlobal);
+#pragma warning (suppress : 26499) // no useful mitigation
                         auto unlock = gsl::finally([&hGlobal]() {GlobalUnlock(hGlobal);});
 
 #pragma warning (suppress : 26490) // safe reinterpret_cast
@@ -311,6 +307,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
         case WM_DROPFILES:
         {
             auto cursor = Wait();
+#pragma warning (suppress : 26499) // no useful mitigation
             auto unwait = gsl::finally([&cursor]() {Unwait(cursor);});
 
             auto canvas{ client };
