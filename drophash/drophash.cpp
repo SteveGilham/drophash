@@ -24,10 +24,9 @@ static void Unwait(HCURSOR cursor)
     ShowCursor(TRUE);
 }
 
+// Retrieve the system error message for the last-error code
 static DWORD get_error_message(std::wstring & message)
 {
-    // Retrieve the system error message for the last-error code
-
     gsl::owner<gsl::wzstring<>> lpMsgBuf{ nullptr };
     DWORD dw{ GetLastError() };
 
@@ -50,7 +49,7 @@ static DWORD get_error_message(std::wstring & message)
     else
     {
         std::array<wchar_t, 128> buffer{ 0 };
-        swprintf_s(&buffer[0], buffer.size(), L"Error %x\n", dw);
+        swprintf_s(&buffer[0], buffer.size(), L"Error %x -- not expanded because %x\n", dw, GetLastError());
         message += &buffer[0];
     }
 
@@ -190,7 +189,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
                     if (!FAILED(hr))
                     {
-#pragma warning (suppress : 26490 26499) // safe reinterpret_cast
+#pragma warning (suppress : 26490 26499) // safe reinterpret_cast, **this
                         EnumFontFamiliesExW(
                             context, 
                             &probe,
