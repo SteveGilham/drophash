@@ -24,13 +24,37 @@ static void Unwait(HCURSOR cursor)
     ShowCursor(TRUE);
 }
 
+// POD-ptr to POD-ptr
+template <typename U, typename T>
+U* data_cast(T* input) noexcept
+{
+    static_assert(std::is_pod<U>::value || std::is_void<U>::value,
+        "The output must be a trivial type.");
+    static_assert(std::is_pod<T>::value || std::is_void<T>::value,
+        "The input must be a trivial type.");
+    return reinterpret_cast<U*>(input);
+}
+
+// POD-ptrlike to POD-ptrlike
+template <typename U, typename T>
+U ptr_cast(T input) noexcept
+{
+    static_assert((std::is_pointer<U>::value && std::is_pod<std::remove_pointer<U>>::value)
+        || (std::is_integral<U>::value && sizeof(U) >= sizeof(int*)),
+        "The output must be a POD-pointer-like type.");
+    static_assert((std::is_pointer<T>::value && std::is_pod<std::remove_pointer<T>>::value)
+        || (std::is_integral<T>::value), // int can be expanded
+        "The input must be a POD-pointer-like type.");
+
+    return reinterpret_cast<U>(input);
+}
+
 // Retrieve the system error message for the last-error code
 static DWORD get_error_message(std::wstring & message)
 {
-    gsl::owner<gsl::wzstring<>> lpMsgBuf{ nullptr };
+    gsl::wzstring<> lpMsgBuf{ nullptr };
     DWORD dw{ GetLastError() };
 
-#pragma warning (suppress : 26490) // safe and necessary reinterpret_cast
     if (FormatMessageW(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
@@ -38,7 +62,7 @@ static DWORD get_error_message(std::wstring & message)
         NULL,
         dw,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        reinterpret_cast<LPWSTR>(&lpMsgBuf),
+        data_cast<wchar_t>(&lpMsgBuf),
         0, NULL))
     {
 #pragma warning (suppress : 26499) // no useful mitigation
@@ -83,14 +107,13 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
 {
     WNDCLASS wndclass{};
     wndclass.style = CS_HREDRAW | CS_VREDRAW;
-    wndclass.lpfnWndProc = reinterpret_cast<WNDPROC>(MainWndProc);
+    wndclass.lpfnWndProc = MainWndProc;
     wndclass.cbClsExtra =
     wndclass.cbWndExtra = 0;
     wndclass.hInstance = instance;
     wndclass.hIcon = LoadIconW(instance, MAKEINTRESOURCE(IDI_DROPHASH));
     wndclass.hCursor = LoadCursorW(NULL, IDC_ARROW);
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-    wndclass.hbrBackground = reinterpret_cast<HBRUSH>(GetStockObject(WHITE_BRUSH));
+    wndclass.hbrBackground = ptr_cast<HBRUSH>(GetStockObject(WHITE_BRUSH));
     wndclass.lpszMenuName = nullptr;
     wndclass.lpszClassName = MAINCLASS;
 
@@ -122,17 +145,16 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
 
 int CALLBACK EnumFontFamiliesExProc(CONST LOGFONTW *lpelfe, CONST TEXTMETRICW *, DWORD, LPARAM lParam )
 {
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-    auto back_channel{ reinterpret_cast<LOGFONTW*>(lParam) };
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-    auto extended{ reinterpret_cast<const ENUMLOGFONTEXW*>(lpelfe) };
+    auto back_channel{ ptr_cast<LOGFONTW*>(lParam) };
+    auto extended{ data_cast<const ENUMLOGFONTEXW>(lpelfe) };
 
-        if (!wcscmp(&extended->elfStyle[0], L"Regular"))
-        {
-            *back_channel = *lpelfe;
-        }
+#pragma warning (suppress : 26499) // **extended no useful mitigation
+    if (!wcscmp(&extended->elfStyle[0], L"Regular"))
+    {
+        *back_channel = *lpelfe;
+    }
 
-        return !(back_channel->lfFaceName[0]);
+    return !(back_channel->lfFaceName[0]);
 }
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
@@ -145,13 +167,13 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
     {
         case WM_CREATE:
         {
-#pragma warning (suppress : 26490 26425 26499) // safe reinterpret_cast; deliberate assignment to static; lParam
+#pragma warning (suppress : 26499) // no useful mitigation
             client = CreateWindowW(TEXT("edit"), NULL,
                 WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | WS_BORDER | ES_LEFT |
                 ES_MULTILINE | ES_AUTOHSCROLL | ES_AUTOVSCROLL | ES_READONLY,
                 0, 0, 0, 0, hwnd,
-                reinterpret_cast<HMENU>(ID_EDIT),
-                reinterpret_cast<LPCREATESTRUCT>(lParam)->hInstance,
+                ptr_cast<HMENU>(gsl::narrow<size_t>(ID_EDIT)),
+                ptr_cast<LPCREATESTRUCT>(lParam)->hInstance,
                 NULL);
 
 
@@ -189,12 +211,12 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
                     if (!FAILED(hr))
                     {
-#pragma warning (suppress : 26490 26499) // safe reinterpret_cast, **this
+#pragma warning (suppress : 26499) // **this
                         EnumFontFamiliesExW(
                             context, 
                             &probe,
                             EnumFontFamiliesExProc, 
-                            reinterpret_cast<LPARAM>(&result),
+                            ptr_cast<LPARAM>(&result),
                             0);
                         return !!result.lfFaceName[0];
                     }
@@ -215,9 +237,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     &result :
                     &metrics.lfMessageFont);
 
-#pragma warning (suppress : 26490) // safe reinterpret_cast
                 SendMessageW(client, WM_SETFONT,
-                    reinterpret_cast<WPARAM>(hfont),
+                    ptr_cast<WPARAM>(hfont),
                     0);
             }
 
@@ -254,14 +275,12 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 #pragma warning (suppress : 26499) // no useful mitigation
                         auto unlock = gsl::finally([&hGlobal]() {GlobalUnlock(hGlobal);});
 
-#pragma warning (suppress : 26490) // safe reinterpret_cast
                         gsl::span<wchar_t> characters{
-                            reinterpret_cast<wchar_t*>(memory),
+                            data_cast<wchar_t>(memory),
                             gsl::narrow<int>(buffersize / sizeof(wchar_t))
                         };
 
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-                        auto pDropFiles = reinterpret_cast<LPDROPFILES>(&characters[0]);
+                        auto pDropFiles = data_cast<DROPFILES>(&characters[0]);
                         pDropFiles->pFiles = gsl::narrow<DWORD>(header);
                         pDropFiles->fWide = TRUE;
                         pDropFiles->pt.x = pDropFiles->pt.y = 0;
@@ -279,8 +298,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         *buffer = L'\0';
 
                         // send DnD event
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-                        PostMessage(hwnd, WM_DROPFILES, reinterpret_cast<WPARAM>(hGlobal), 0);
+                        PostMessage(hwnd, WM_DROPFILES, ptr_cast<WPARAM>(hGlobal), 0);
                     }
                 }
             }
@@ -308,22 +326,18 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             auto cursor = Wait();
 #pragma warning (suppress : 26499) // no useful mitigation
             auto unwait = gsl::finally([&cursor]() {Unwait(cursor);});
+            auto render = gsl::finally([] () { 
+                        text += L"\r\n";
+                        SetWindowText(client, text.c_str()); 
+            });
 
-            auto canvas{ client };
-            auto lambda = [canvas] (std::wstring * str) { 
-                        *str += L"\r\n";
-                        SetWindowText(canvas, str->c_str()); 
-                        };
-            std::unique_ptr<std::wstring, decltype(lambda)> data{ &text, lambda };
-
-#pragma warning (suppress : 26490) // safe reinterpret_cast
-            auto drop = reinterpret_cast<HDROP>(wParam);
+            auto drop = ptr_cast<HDROP>(wParam);
 #pragma warning (suppress : 26499) // no useful mitigation
             auto finishDrag = gsl::finally([&drop]() { DragFinish(drop); });
 
             UINT nfiles = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
 
-            *data += L"Dropped "+ std::to_wstring(nfiles) + 
+            text += L"Dropped "+ std::to_wstring(nfiles) + 
                    L" files\r\n";
 
             // Get handle to the crypto provider
@@ -334,7 +348,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     PROV_RSA_AES,
                     CRYPT_VERIFYCONTEXT))
             {
-                *data += L"CryptAcquireContext failed: " + std::to_wstring(GetLastError());
+                text += L"CryptAcquireContext failed: " + std::to_wstring(GetLastError());
                 return handled;
             }
 
@@ -365,15 +379,14 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     if (hash) { CryptDestroyHash(hash); }
                 }});
                 results.resize(inputs.size());
-
-                std::transform(inputs.begin(), inputs.end(), results.begin(), [&hProv, &data] (Recipe in) -> Record {
+                std::transform(inputs.begin(), inputs.end(), results.begin(), [&hProv] (Recipe in) -> Record {
                     HCRYPTHASH hHash = 0;
 
                     if (!CryptCreateHash(hProv, std::get<1>(in), 0, 0, &hHash))
                     {
                         std::wstring message = L"CryptCreateHash " + std::get<0>(in) + L" failed: ";
                         get_error_message(message);
-                        *data += message;
+                        text += message;
                         hHash = 0;
                     }
 
@@ -383,8 +396,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         std::get<2>(in));
                 });
 
-                *data += &fn[0];
-                *data += L"\r\n";
+                text += &fn[0];
+                text += L"\r\n";
 
                 std::ifstream file(&fn[0], std::ios::in|std::ios::binary);
                 std::array<char, 4096> chunk{};
@@ -399,7 +412,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         auto chunkBYTEs{ gsl::as_span<BYTE>(gsl::as_bytes(gsl::as_span(chunk))) };
 
                         auto check = 
-                            std::find_if(results.begin(), results.end(), [&data, &chunkBYTEs, &got] (Record hash) -> bool {
+                            std::find_if(results.begin(), results.end(), [&chunkBYTEs, &got] (Record hash) -> bool {
                             auto handle = std::get<1>(hash);
                             if (!handle || CryptHashData(handle, &chunkBYTEs[0], got, 0))
                             {
@@ -408,8 +421,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
                             std::wstring message = L"CryptHashData " + std::get<0>(hash) + L" failed: ";
                             get_error_message(message);
-                            *data += message;
-                            *data += L"\r\n";
+                            text += message;
+                            text += L"\r\n";
                             return true;
                         });
 
@@ -427,7 +440,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     }
 
                     // Format the outputs
-                    std::for_each(results.begin(), results.end(), [&data] (Record hash) {
+                    std::for_each(results.begin(), results.end(), [] (Record hash) {
                         DWORD hash_size = std::get<2>(hash);
                         std::vector<BYTE> buffer(hash_size);
                         auto handle = std::get<1>(hash);
@@ -435,21 +448,21 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         {
                             if(CryptGetHashParam(handle, HP_HASHVAL, &buffer[0], &hash_size, 0))
                             {
-                                *data += std::get<0>(hash) + L": ";
-                                format_hex_string(buffer, *data.get());
+                                text += std::get<0>(hash) + L": ";
+                                format_hex_string(buffer, text);
                             }
                             else
                             {
                                 std::wstring message = L"CryptGetHashParam " + std::get<0>(hash) + L" failed: ";
                                 get_error_message(message);
-                                *data += message;
+                                text += message;
                             }
-                            *data += L"\r\n";
+                            text += L"\r\n";
                         }
                     });
                 } // file opened
 
-                *data += L"\r\n";
+                text += L"\r\n";
 
             }
 
