@@ -5,7 +5,7 @@
 
 LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define MAINCLASS TEXT("DropHashClass")
-#define APPNAME   TEXT("DropHash2015+")
+#define APPNAME   TEXT("DropHash2017")
 
 //---------------------------------------------------------------------------
 static std::wstring text(L"Drop files to hash");
@@ -30,10 +30,22 @@ U* data_cast(T* input) noexcept
 {
     static_assert(std::is_pod<U>::value || std::is_void<U>::value,
         "The output must be a trivial type.");
-    static_assert(std::is_pod<T>::value || std::is_void<T>::value,
+    static_assert(std::is_pod<T>::value,
         "The input must be a trivial type.");
+
+
+#pragma warning (suppress : 26490) // done in controlled fashion
     return reinterpret_cast<U*>(input);
 }
+
+template <typename U>
+U* data_cast(void* input) noexcept 
+{
+    static_assert(std::is_pod<U>::value || std::is_void<U>::value,
+        "The output must be a trivial type.");
+    return static_cast<U*>(input);
+}
+
 
 // POD-ptrlike to POD-ptrlike
 template <typename U, typename T>
@@ -46,6 +58,7 @@ U ptr_cast(T input) noexcept
         || (std::is_integral<T>::value), // int can be expanded
         "The input must be a POD-pointer-like type.");
 
+#pragma warning (suppress : 26490 26471) // done in controlled fashion, some casts from void* can't be static e.g to WPARAM
     return reinterpret_cast<U>(input);
 }
 
@@ -92,7 +105,9 @@ static void format_hex_string(std::vector<BYTE> & buffer, std::wstring & sink)
     std::wstringstream stream{};
     std::for_each(buffer.begin(), buffer.end(), [&stream] (BYTE x) {
         static int count = 1;
+#pragma warning (suppress : 26499) // **this no useful mitigation
         stream << std::setfill(L'0') << std::setw(2) << std::hex << x;
+#pragma warning (suppress : 26499) // **this no useful mitigation
         if ((++count)%2) stream << L" ";
     });
 
@@ -146,7 +161,8 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
 int CALLBACK EnumFontFamiliesExProc(CONST LOGFONTW *lpelfe, CONST TEXTMETRICW *, DWORD, LPARAM lParam )
 {
     auto back_channel{ ptr_cast<LOGFONTW*>(lParam) };
-    auto extended{ data_cast<const ENUMLOGFONTEXW>(lpelfe) };
+#pragma warning (suppress : 26496) // it is marked as const!!
+    const auto * const extended{ data_cast<const ENUMLOGFONTEXW>(lpelfe) };
 
 #pragma warning (suppress : 26499) // **extended no useful mitigation
     if (!wcscmp(&extended->elfStyle[0], L"Regular"))
@@ -161,6 +177,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 WPARAM wParam, LPARAM lParam)
 {
     static HWND client;
+#pragma warning (suppress : 26496) // it is marked as const!!
     const LRESULT handled{ 0 };
 
     switch(message)
@@ -180,7 +197,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
             {
                 // System font for size
                 NONCLIENTMETRICSW metrics{ sizeof(NONCLIENTMETRICSW) };
-                auto status = SystemParametersInfoW(
+#pragma warning (suppress : 26496) // it is marked as const!!
+                const auto status = SystemParametersInfoW(
                     SPI_GETNONCLIENTMETRICS,
                     metrics.cbSize,
                     &metrics,
@@ -194,7 +212,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
                 auto context = GetDC(NULL);
 #pragma warning (suppress : 26499) // no useful mitigation
-                auto resetDC = gsl::finally([&context]() {ReleaseDC(NULL, context);});
+                const auto resetDC = gsl::finally([&context]() {ReleaseDC(NULL, context);});
 
                 LOGFONTW probe{};
                 probe.lfFaceName[0] = L'\0';
@@ -208,7 +226,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
                 std::find_if(faces.begin(), faces.end(), [&result, &probe, &context](std::wstring face) -> bool {
 #pragma warning (suppress : 26499) // no useful mitigation
-                    auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
+#pragma warning (suppress : 26496) // it is marked as const!!
+                    const auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
                     if (!FAILED(hr))
                     {
 #pragma warning (suppress : 26499) // **this
@@ -373,6 +392,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 // ... add more hash algorithms here e.g. CALG_SHA_384 or CALG_SHA_512
 
                 std::vector<Record> results;
+#pragma warning (suppress : 26493) // implicit 'C'-style cast
                 auto releaseResults = gsl::finally([&results]() {for (auto item : results)
                 {
                     auto hash = std::get<1>(item);
@@ -399,7 +419,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 text += &fn[0];
                 text += L"\r\n";
 
-                std::ifstream file(&fn[0], std::ios::in|std::ios::binary);
+#pragma warning (suppress : 26493) // implicit 'C'-style cast
+                std::ifstream file{ &fn[0], std::ios::in | std::ios::binary };
                 std::array<char, 4096> chunk{};
                 if (file.is_open())
                 {
@@ -411,7 +432,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         DWORD got = gsl::narrow<DWORD>(file.gcount());
                         auto chunkBYTEs{ gsl::as_span<BYTE>(gsl::as_bytes(gsl::as_span(chunk))) };
 
-                        auto check = 
+#pragma warning (suppress : 26496) // it is marked as const!!
+                        const auto check =
                             std::find_if(results.begin(), results.end(), [&chunkBYTEs, &got] (Record hash) -> bool {
                             auto handle = std::get<1>(hash);
                             if (!handle || CryptHashData(handle, &chunkBYTEs[0], got, 0))
