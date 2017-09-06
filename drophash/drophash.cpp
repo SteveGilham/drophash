@@ -104,7 +104,7 @@ static void raise_error_message(std::wstring & message)
 static void format_hex_string(std::vector<BYTE> & buffer, std::wstring & sink)
 {
     std::wstringstream stream{};
-    std::for_each(buffer.begin(), buffer.end(), [&stream] (BYTE x) {
+    ranges::v3::for_each(buffer, [&stream] (BYTE x) {
         static int count = 1;
 #pragma warning (suppress : 26499) // **this no useful mitigation
         stream << std::setfill(L'0') << std::setw(2) << std::hex << x;
@@ -225,7 +225,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 // Find a monospace font
                 std::array<std::wstring, 4> faces{ L"Inconsolata", L"Consolas", L"Lucida Console", L"Courier New" };
 
-                std::find_if(faces.begin(), faces.end(), [&result, &probe, &context](std::wstring face) -> bool {
+                ranges::v3::find_if(faces, [&result, &probe, &context](std::wstring face) -> bool {
 #pragma warning (suppress : 26499) // no useful mitigation
 #pragma warning (suppress : 26496) // it is marked as const!!
                     const auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
@@ -277,14 +277,14 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     auto releaseArgs = gsl::finally([&szArglist](){LocalFree(szArglist);});
 
                     // Skip the executable name
-                    gsl::span<gsl::wzstring<>> args{ std::next(szArglist), std::next(szArglist, nArgs) };
+                    auto args = ranges::v3::view::counted(std::next(szArglist), static_cast<ptrdiff_t>(nArgs));
 
                     // pointer arithmetic, yuck!!
                     SIZE_T wideheader{ (sizeof(DROPFILES) + sizeof(wchar_t) - 1) / sizeof(wchar_t) };
                     SIZE_T header{ wideheader * sizeof(wchar_t) };
                     SIZE_T buffersize{ header };
 
-                    std::for_each(args.begin(), args.end(), [&buffersize](gsl::wzstring<> in) {
+                    ranges::v3::for_each(args, [&buffersize](gsl::wzstring<> in) {
                         buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
                     });
 
@@ -310,7 +310,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         std::advance(buffer, wideheader);
                         auto end{ characters.end() };
 
-                        std::for_each(args.begin(), args.end(), [&buffer, &end](gsl::wzstring<> in) {
+                        ranges::v3::for_each(args, [&buffer, &end](gsl::wzstring<> in) {
                             wcscpy_s(&buffer[0], gsl::narrow<rsize_t>(end - buffer), in);
                             std::advance(buffer, (wcslen(in) + 1));
                         });
@@ -392,15 +392,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                 inputs.push_back( std::make_tuple(L"SHA2-256", CALG_SHA_256, 32 ));
                 // ... add more hash algorithms here e.g. CALG_SHA_384 or CALG_SHA_512
 
-                std::vector<Record> results;
-#pragma warning (suppress : 26493) // implicit 'C'-style cast
-                auto releaseResults = gsl::finally([&results]() {for (auto item : results)
-                {
-                    auto hash = std::get<1>(item);
-                    if (hash) { CryptDestroyHash(hash); }
-                }});
-                results.resize(inputs.size());
-                std::transform(inputs.begin(), inputs.end(), results.begin(), [&hProv] (Recipe in) -> Record {
+                auto results = ranges::v3::action::transform(inputs, [&hProv] (const Recipe &in) -> Record {
                     HCRYPTHASH hHash = 0;
 
                     if (!CryptCreateHash(hProv, std::get<1>(in), 0, 0, &hHash))
@@ -416,6 +408,13 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                         hHash,
                         std::get<2>(in));
                 });
+
+#pragma warning (suppress : 26493) // implicit 'C'-style cast
+                auto releaseResults = gsl::finally([&results]() {for (auto item : results)
+                {
+                    auto hash = std::get<1>(item);
+                    if (hash) { CryptDestroyHash(hash); }
+                }});
 
                 text += &fn[0];
                 text += L"\r\n";
@@ -435,7 +434,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
 #pragma warning (suppress : 26496) // it is marked as const!!
                         const auto check =
-                            std::find_if(results.begin(), results.end(), [&chunkBYTEs, &got] (Record hash) -> bool {
+                            ranges::v3::find_if(results, [&chunkBYTEs, &got] (Record hash) -> bool {
                             auto handle = std::get<1>(hash);
                             if (!handle || CryptHashData(handle, &chunkBYTEs[0], got, 0))
                             {
@@ -463,7 +462,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     }
 
                     // Format the outputs
-                    std::for_each(results.begin(), results.end(), [] (Record hash) {
+                    ranges::v3::for_each(results, [] (Record hash) {
                         DWORD hash_size = std::get<2>(hash);
                         std::vector<BYTE> buffer(hash_size);
                         auto handle = std::get<1>(hash);
