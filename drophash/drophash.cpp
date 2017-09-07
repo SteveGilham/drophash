@@ -75,18 +75,19 @@ static DWORD get_error_message(std::wstring & message)
         NULL,
         dw,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+#pragma warning (suppress : 26412) // no useful mitigation -- it *is* initialised
         data_cast<wchar_t>(&lpMsgBuf),
         0, NULL))
     {
-#pragma warning (suppress : 26499) // no useful mitigation
+#pragma warning (suppress : 26412 26499) // no useful mitigation
         auto free_buffer = gsl::finally([&lpMsgBuf]() { LocalFree(lpMsgBuf);});
-#pragma warning (suppress : 26401) // can we convince the analyser that this is set?
+#pragma warning (suppress : 26401 26413) // can we convince the analyser that this is set?
         message += *lpMsgBuf;
     }
     else
     {
         std::array<wchar_t, 128> buffer{ 0 };
-        swprintf_s(&buffer[0], buffer.size(), L"Error %x -- not expanded because %x\n", dw, GetLastError());
+        swprintf_s(&buffer[0], buffer.size(), L"Error %x -- not expanded because %x\n", gsl::narrow<unsigned int>(dw), gsl::narrow<unsigned int>(GetLastError()));
         message += &buffer[0];
     }
 
@@ -205,8 +206,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     0);
                 if (!status)
                 {
-                    std::wstring message(L"Could not get system parameter info - ");
-                    raise_error_message(message);
+                    std::wstring info(L"Could not get system parameter info - ");
+                    raise_error_message(info);
                     return handled;
                 }
 
@@ -299,7 +300,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                             gsl::narrow<int>(buffersize / sizeof(wchar_t))
                         };
 
-                        auto pDropFiles = data_cast<DROPFILES>(&characters[0]);
+                        auto pDropFiles = data_cast<DROPFILES>(memory);
                         pDropFiles->pFiles = gsl::narrow<DWORD>(header);
                         pDropFiles->fWide = TRUE;
                         pDropFiles->pt.x = pDropFiles->pt.y = 0;
