@@ -104,7 +104,8 @@ static void raise_error_message(std::wstring & message)
 static void format_hex_string(std::vector<BYTE> & buffer, std::wstring & sink)
 {
     std::wstringstream stream{};
-    ranges::v3::for_each(buffer, [&stream] (BYTE x) {
+#pragma warning (suppress : 26444) // Avoid unnamed objects with custom construction and destruction (es.84).
+	ranges::v3::for_each(buffer, [&stream] (BYTE x) {
         static int count = 1;
 #pragma warning (suppress : 26499) // **this no useful mitigation
         stream << std::setfill(L'0') << std::setw(2) << std::hex << x;
@@ -462,7 +463,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     }
 
                     // Format the outputs
-                    ranges::v3::for_each(results, [] (Record hash) {
+#pragma warning (suppress : 26444) // Avoid unnamed objects with custom construction and destruction (es.84).
+					ranges::v3::for_each(results, [] (Record hash) {
                         DWORD hash_size = std::get<2>(hash);
                         std::vector<BYTE> buffer(hash_size);
                         auto handle = std::get<1>(hash);
