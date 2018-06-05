@@ -159,10 +159,10 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
     return msg.wParam != 0;
 }
 
-int CALLBACK EnumFontFamiliesExProc(CONST LOGFONTW *lpelfe, CONST TEXTMETRICW *, DWORD, LPARAM lParam )
+int CALLBACK EnumFontFamiliesExProc(CONST LOGFONTW *lpelfe, CONST TEXTMETRICW *, DWORD, LPARAM lParam ) noexcept
 {
     auto back_channel{ ptr_cast<LOGFONTW*>(lParam) };
-#pragma warning (suppress : 26496) // it is marked as const!!
+#pragma warning (suppress : 26496) // it _is_ marked as const!!
     const auto * const extended{ data_cast<const ENUMLOGFONTEXW>(lpelfe) };
 
 #pragma warning (suppress : 26499) // **extended no useful mitigation
