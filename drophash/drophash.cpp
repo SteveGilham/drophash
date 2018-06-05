@@ -400,7 +400,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
                     if (hash) { CryptDestroyHash(hash); }
                 }});
                 results.resize(inputs.size());
-                std::transform(inputs.begin(), inputs.end(), results.begin(), [&hProv] (Recipe in) -> Record {
+#pragma warning (suppress : 26444) // Avoid unnamed objects with custom construction and destruction (es.84).
+				std::transform(inputs.begin(), inputs.end(), results.begin(), [&hProv] (Recipe in) -> Record {
                     HCRYPTHASH hHash = 0;
 
                     if (!CryptCreateHash(hProv, std::get<1>(in), 0, 0, &hHash))
