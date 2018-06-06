@@ -50,3 +50,5 @@ Temporary Items
 binaries/
 packages/
 *.user
+Avalonia/Avalonia/Drophash.Avalonia/bin/
+Avalonia/Avalonia/Drophash.Avalonia/obj/
