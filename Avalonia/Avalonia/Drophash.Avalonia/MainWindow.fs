@@ -50,7 +50,3 @@ type MainWindow () as this =
         this.FindControl<TextBlock>("MIT").Text <- String.Format(CultureInfo.InvariantCulture,
                                                                  UICommon.GetResourceString "License",
                                                                  copyright)
-
-        let expander = this.FindControl<Expander>("Expander")
-        expander.PropertyChanged
-        |> Event.add (fun _ -> this.Height <- float (if expander.IsExpanded then 550 else 400))
