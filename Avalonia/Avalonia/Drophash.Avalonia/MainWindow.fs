@@ -15,7 +15,6 @@ module UICommon =
         let resources = new ResourceManager("Drophash.Avalonia.Strings", executingAssembly)
         resources.GetString(key)
 
-
 type MainWindow () as this =
     inherit Window()
 

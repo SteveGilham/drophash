@@ -4,7 +4,6 @@
         Title="Drophash.Avalonia">
   <TabControl>
     <TabItem Header="Drop">
-      
     </TabItem>
     <TabItem Header="About">
       <StackPanel Margin="10">
@@ -12,7 +11,7 @@
         <TextBlock Name="Program" Margin="10" FontSize="24" FontWeight="ExtraBold" HorizontalAlignment="Center" />
         <TextBlock Name="Description"  HorizontalAlignment="Center" TextAlignment="Center" />
         <TextBlock Name="Copyright" Margin="10" FontSize="8" HorizontalAlignment="Center" />
-        <html:HtmlLabel Name="Link" MinHeight="20" Focusable="True" HorizontalAlignment="Center"/>
+        <html:HtmlLabel Name="Link" MinHeight="20" Focusable="True" HorizontalAlignment="Center" />
         <Expander Name="Expander" Margin="10" HorizontalAlignment="Center" MinWidth="500" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
           <Expander.Header>
             <TextBlock Name="License" />
