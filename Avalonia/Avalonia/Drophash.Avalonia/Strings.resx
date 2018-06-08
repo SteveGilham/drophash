@@ -161,4 +161,7 @@ THE SOFTWARE.</value>
   <data name="Close" xml:space="preserve">
     <value>Close</value>
   </data>
+  <data name="Drop" xml:space="preserve">
+    <value>Drop Zone</value>
+  </data>
 </root>

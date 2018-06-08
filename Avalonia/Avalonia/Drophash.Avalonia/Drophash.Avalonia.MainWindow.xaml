@@ -3,9 +3,12 @@
         xmlns:html="clr-namespace:Avalonia.Controls.Html;assembly=Avalonia.HtmlRenderer"
         Title="Drophash.Avalonia">
   <TabControl>
-    <TabItem Header="Drop">
+    <TabItem Name="Drop" Header="Drop">
+      <ScrollViewer Name="DZ">
+        <TextBlock Name="Zone" TextWrapping="NoWrap"  xml:space="preserve" />
+      </ScrollViewer>
     </TabItem>
-    <TabItem Header="About">
+    <TabItem Name="About">
       <StackPanel Margin="10">
         <!-- Image Height="128" Stretch="None" Width="128" Source="Logo.png" HorizontalAlignment="Center" / -->
         <TextBlock Name="Program" Margin="10" FontSize="24" FontWeight="ExtraBold" HorizontalAlignment="Center" />
@@ -16,7 +19,7 @@
           <Expander.Header>
             <TextBlock Name="License" />
           </Expander.Header>
-          <ScrollViewer MaxHeight="150" HorizontalAlignment="Center">
+          <ScrollViewer MaxHeight="400" HorizontalAlignment="Center">
             <TextBlock Name="MIT" MinHeight="100" Width="500" TextWrapping="NoWrap" xml:space="preserve" />
           </ScrollViewer>
         </Expander>

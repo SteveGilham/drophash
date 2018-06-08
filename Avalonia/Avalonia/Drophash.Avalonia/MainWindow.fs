@@ -23,7 +23,15 @@ type MainWindow () as this =
     do this.InitializeComponent()
     member this.InitializeComponent() =
         AvaloniaXamlLoader.Load(this)
-        //this.Title <- UICommon.GetResourceString "About"
+        this.FindControl<TabItem>("Drop").Header <- UICommon.GetResourceString "Drop"
+        let zone = this.FindControl<TextBlock>("Zone")
+        let scroll = this.FindControl<ScrollViewer>("DZ")
+        zone.MinWidth <- scroll.Viewport.Width
+        zone.MinHeight <- scroll.Viewport.Height
+        scroll.LayoutUpdated |> Event.add ( fun _ -> zone.MinWidth <- scroll.Viewport.Width
+                                                     zone.MinHeight <- scroll.Viewport.Height)
+
+        this.FindControl<TabItem>("About").Header <- UICommon.GetResourceString "About"
         this.FindControl<TextBlock>("Program").Text <- "Drophash " + "version todo" //AssemblyVersionInformation.AssemblyFileVersion
         this.FindControl<TextBlock>("Description").Text <- UICommon.GetResourceString "ProgramDescription"
 
