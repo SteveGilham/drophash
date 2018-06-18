@@ -1,11 +1,15 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:html="clr-namespace:Avalonia.Controls.Html;assembly=Avalonia.HtmlRenderer"
-        Title="Drophash.Avalonia">
+        Title="Drophash.Avalonia"
+        DragDrop.AllowDrop="True">
   <TabControl>
     <TabItem Name="Drop" Header="Drop">
       <ScrollViewer Name="DZ">
-        <TextBlock Name="Zone" TextWrapping="NoWrap"  xml:space="preserve" />
+        <Border Background="{DynamicResource ThemeAccentBrush2}" Padding="16"
+                >
+          <TextBlock Name="Zone" TextWrapping="NoWrap"  xml:space="preserve">Drop some text or files here</TextBlock>
+        </Border>        
       </ScrollViewer>
     </TabItem>
     <TabItem Name="About">

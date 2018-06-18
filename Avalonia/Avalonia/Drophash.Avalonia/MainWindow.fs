@@ -2,6 +2,7 @@ namespace Drophash.Avalonia
 
 open Avalonia.Controls
 open Avalonia.Controls.Html
+open Avalonia.Input
 open Avalonia.Markup.Xaml
 
 open System
@@ -30,6 +31,22 @@ type MainWindow () as this =
         zone.MinHeight <- scroll.Viewport.Height
         scroll.LayoutUpdated |> Event.add ( fun _ -> zone.MinWidth <- scroll.Viewport.Width
                                                      zone.MinHeight <- scroll.Viewport.Height)
+
+        this.AddHandler(DragDrop.DropEvent,
+                        new EventHandler<DragEventArgs>(fun _ e -> 
+                            if e.Data.Contains(DataFormats.Text) then
+                                zone.Text <- e.Data.GetText();
+                            if e.Data.Contains(DataFormats.FileNames) then
+                                zone.Text <- String.Join(Environment.NewLine, e.Data.GetFileNames())   
+                        )) |> ignore
+        this.AddHandler(DragDrop.DragOverEvent, 
+                        new EventHandler<DragEventArgs>(fun _ e -> // Only allow Copy as Drop Operation.
+                            zone.Text <- zone.Text + (sprintf ".%A.\n" e.DragEffects)
+                            e.DragEffects <- e.DragEffects &&& DragDropEffects.Copy
+
+                            // Only allow if the dragged data contains text or filenames.
+                            if (e.Data.Contains(DataFormats.Text) || e.Data.Contains(DataFormats.FileNames)) |> not then
+                                e.DragEffects <- DragDropEffects.None)) |> ignore
 
         this.FindControl<TabItem>("About").Header <- UICommon.GetResourceString "About"
         this.FindControl<TextBlock>("Program").Text <- "Drophash " + "version todo" //AssemblyVersionInformation.AssemblyFileVersion
