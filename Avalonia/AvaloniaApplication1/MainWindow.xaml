@@ -1,0 +1,34 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:html="clr-namespace:Avalonia.Controls.Html;assembly=Avalonia.HtmlRenderer"
+        Title="Drophash.Avalonia"
+        Icon="resm:AvaloniaApplication1.drophash.ico">
+  <TabControl>
+    <TabItem Name="Drop" Header="Drop">
+      <ScrollViewer Name="DZ">
+        <Border Background="{DynamicResource ThemeAccentBrush2}" Padding="16"
+                Name="Target"
+        DragDrop.AllowDrop="True">
+          <TextBlock Name="Zone" TextWrapping="NoWrap"  xml:space="preserve">Drop some text or files here</TextBlock>
+        </Border>
+      </ScrollViewer>
+    </TabItem>
+    <TabItem Name="About">
+      <StackPanel Margin="10">
+        <Image Height="128" Width="128" Source="resm:AvaloniaApplication1.drophash32.png" HorizontalAlignment="Center" />
+        <TextBlock Name="Program" Margin="10" FontSize="24" FontWeight="ExtraBold" HorizontalAlignment="Center" />
+        <TextBlock Name="Description"  HorizontalAlignment="Center" TextAlignment="Center" />
+        <TextBlock Name="Copyright" Margin="10" FontSize="8" HorizontalAlignment="Center" />
+        <html:HtmlLabel Name="Link" MinHeight="20" Focusable="True" HorizontalAlignment="Center" />
+        <Expander Name="Expander" Margin="10" HorizontalAlignment="Center" MinWidth="500" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+          <Expander.Header>
+            <TextBlock Name="License" />
+          </Expander.Header>
+          <ScrollViewer MaxHeight="400" HorizontalAlignment="Center">
+            <TextBlock Name="MIT" MinHeight="100" Width="500" TextWrapping="NoWrap" xml:space="preserve" />
+          </ScrollViewer>
+        </Expander>
+      </StackPanel>
+    </TabItem>
+  </TabControl>
+</Window>
