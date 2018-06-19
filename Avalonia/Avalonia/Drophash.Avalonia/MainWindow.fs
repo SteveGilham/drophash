@@ -37,19 +37,23 @@ type MainWindow () as this =
 
         this.AddHandler(DragDrop.DropEvent,
                         new EventHandler<DragEventArgs>(fun _ e -> 
-                            if e.Data.Contains(DataFormats.Text) then
-                                zone.Text <- e.Data.GetText();
                             if e.Data.Contains(DataFormats.FileNames) then
                                 zone.Text <- String.Join(Environment.NewLine, e.Data.GetFileNames())   
+                            else if e.Data.Contains(DataFormats.Text) then
+                                zone.Text <- e.Data.GetText()
                         )) |> ignore
         this.AddHandler(DragDrop.DragOverEvent, 
-                        new EventHandler<DragEventArgs>(fun _ e -> // Only allow Copy as Drop Operation.
-                            zone.Text <- zone.Text + (sprintf ".%A.\n" e.DragEffects)
-                            e.DragEffects <- e.DragEffects &&& DragDropEffects.Copy
-
+                        new EventHandler<DragEventArgs>(fun _ e ->
+                            // Only allow Copy as Drop Operation.
                             // Only allow if the dragged data contains text or filenames.
-                            if (e.Data.Contains(DataFormats.Text) || e.Data.Contains(DataFormats.FileNames)) |> not then
-                                e.DragEffects <- DragDropEffects.None)) |> ignore
+                            zone.Text <- zone.Text + (sprintf ".%A.\n" e.DragEffects)
+                            e.DragEffects <- e.DragEffects &&& 
+                                             if e.Data.Contains(DataFormats.Text) ||
+                                                e.Data.Contains(DataFormats.FileNames) then
+                                                DragDropEffects.Copy
+                                             else
+                                                DragDropEffects.None)
+                            ) |> ignore
 
         // "About"
 
