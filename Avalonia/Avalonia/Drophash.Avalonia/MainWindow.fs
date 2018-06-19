@@ -27,22 +27,25 @@ type MainWindow () as this =
 
         // The content
 
-        this.FindControl<TabItem>("Drop").Header <- UICommon.GetResourceString "Drop"
+        let tab = this.FindControl<TabItem>("Drop")
+        tab.Header <- UICommon.GetResourceString "Drop"
         let zone = this.FindControl<TextBlock>("Zone")
         let scroll = this.FindControl<ScrollViewer>("DZ")
+        let target = this.FindControl<Border>("Target")
+
         zone.MinWidth <- scroll.Viewport.Width
         zone.MinHeight <- scroll.Viewport.Height
         scroll.LayoutUpdated |> Event.add ( fun _ -> zone.MinWidth <- scroll.Viewport.Width
                                                      zone.MinHeight <- scroll.Viewport.Height)
 
-        this.AddHandler(DragDrop.DropEvent,
+        target.AddHandler(DragDrop.DropEvent,
                         new EventHandler<DragEventArgs>(fun _ e -> 
                             if e.Data.Contains(DataFormats.FileNames) then
                                 zone.Text <- String.Join(Environment.NewLine, e.Data.GetFileNames())   
                             else if e.Data.Contains(DataFormats.Text) then
                                 zone.Text <- e.Data.GetText()
                         )) |> ignore
-        this.AddHandler(DragDrop.DragOverEvent, 
+        target.AddHandler(DragDrop.DragOverEvent, 
                         new EventHandler<DragEventArgs>(fun _ e ->
                             // Only allow Copy as Drop Operation.
                             // Only allow if the dragged data contains text or filenames.
