@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:html="clr-namespace:Avalonia.Controls.Html;assembly=Avalonia.HtmlRenderer"
-        Title="Drophash.Avalonia">
+        Title="Drophash.Avalonia"
+        Icon="resm:Drophash.Avalonia.drophash.ico">
   <TabControl>
     <TabItem Name="Drop" Header="Drop">
       <ScrollViewer Name="DZ">
@@ -14,7 +15,7 @@
     </TabItem>
     <TabItem Name="About">
       <StackPanel Margin="10">
-        <!-- Image Height="128" Stretch="None" Width="128" Source="Logo.png" HorizontalAlignment="Center" / -->
+        <Image Height="128" Width="128" Source="resm:Drophash.Avalonia.drophash32.png" HorizontalAlignment="Center" />
         <TextBlock Name="Program" Margin="10" FontSize="24" FontWeight="ExtraBold" HorizontalAlignment="Center" />
         <TextBlock Name="Description"  HorizontalAlignment="Center" TextAlignment="Center" />
         <TextBlock Name="Copyright" Margin="10" FontSize="8" HorizontalAlignment="Center" />

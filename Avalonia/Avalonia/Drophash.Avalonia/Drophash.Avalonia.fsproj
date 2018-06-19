@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="drophash.ico" />
+    <EmbeddedResource Include="drophash32.png" />
     <EmbeddedResource Include="Drophash.Avalonia.MainWindow.xaml">
       <LogicalName>Drophash.Avalonia.MainWindow.xaml</LogicalName>
     </EmbeddedResource>
@@ -20,6 +22,8 @@
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+
+  <ItemGroup />
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="0.6.2-build5450-beta" />
