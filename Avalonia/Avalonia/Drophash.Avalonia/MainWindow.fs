@@ -22,6 +22,7 @@ type MainWindow () as this =
     let mutable armed = false
 
     do this.InitializeComponent()
+
     member this.InitializeComponent() =
         AvaloniaXamlLoader.Load(this)
 
@@ -39,18 +40,18 @@ type MainWindow () as this =
                                                      zone.MinHeight <- scroll.Viewport.Height)
 
         target.AddHandler(DragDrop.DropEvent,
-                        new EventHandler<DragEventArgs>(fun _ e -> 
+                        new EventHandler<DragEventArgs>(fun _ e ->
                             if e.Data.Contains(DataFormats.FileNames) then
-                                zone.Text <- String.Join(Environment.NewLine, e.Data.GetFileNames())   
+                                zone.Text <- String.Join(Environment.NewLine, e.Data.GetFileNames())
                             else if e.Data.Contains(DataFormats.Text) then
                                 zone.Text <- e.Data.GetText()
                         )) |> ignore
-        target.AddHandler(DragDrop.DragOverEvent, 
+        target.AddHandler(DragDrop.DragOverEvent,
                         new EventHandler<DragEventArgs>(fun _ e ->
                             // Only allow Copy as Drop Operation.
                             // Only allow if the dragged data contains text or filenames.
                             zone.Text <- zone.Text + (sprintf ".%A.\n" e.DragEffects)
-                            e.DragEffects <- e.DragEffects &&& 
+                            e.DragEffects <- e.DragEffects &&&
                                              if e.Data.Contains(DataFormats.Text) ||
                                                 e.Data.Contains(DataFormats.FileNames) then
                                                 DragDropEffects.Copy

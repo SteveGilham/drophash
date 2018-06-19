@@ -10,7 +10,7 @@
                 Name="Target"
         DragDrop.AllowDrop="True">
           <TextBlock Name="Zone" TextWrapping="NoWrap"  xml:space="preserve">Drop some text or files here</TextBlock>
-        </Border>        
+        </Border>
       </ScrollViewer>
     </TabItem>
     <TabItem Name="About">
