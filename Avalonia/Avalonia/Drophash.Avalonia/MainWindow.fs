@@ -20,6 +20,7 @@ type MainWindow () as this =
     inherit Window()
 
     let mutable armed = false
+    let sink = System.Collections.Generic.List<IDisposable>()
 
     do this.InitializeComponent()
 
@@ -39,15 +40,16 @@ type MainWindow () as this =
         scroll.LayoutUpdated |> Event.add ( fun _ -> zone.MinWidth <- scroll.Viewport.Width
                                                      zone.MinHeight <- scroll.Viewport.Height)
 
+        DragDrop.SetAllowDrop(target, true)
         target.AddHandler(DragDrop.DropEvent,
                         new EventHandler<DragEventArgs>(fun _ e ->
                             if e.Data.Contains(DataFormats.FileNames) then
                                 zone.Text <- String.Join(Environment.NewLine, e.Data.GetFileNames())
                             else if e.Data.Contains(DataFormats.Text) then
                                 zone.Text <- e.Data.GetText()
-                        )) |> ignore
-        target.AddHandler(DragDrop.DragOverEvent,
-                        new EventHandler<DragEventArgs>(fun _ e ->
+                        )) |> sink.Add
+
+        let inProcess = new EventHandler<DragEventArgs>(fun _ e ->
                             // Only allow Copy as Drop Operation.
                             // Only allow if the dragged data contains text or filenames.
                             zone.Text <- zone.Text + (sprintf ".%A.\n" e.DragEffects)
@@ -57,7 +59,7 @@ type MainWindow () as this =
                                                 DragDropEffects.Copy
                                              else
                                                 DragDropEffects.None)
-                            ) |> ignore
+        target.AddHandler(DragDrop.DragOverEvent, inProcess) |> sink.Add
 
         // "About"
 
