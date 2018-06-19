@@ -24,6 +24,9 @@ type MainWindow () as this =
     do this.InitializeComponent()
     member this.InitializeComponent() =
         AvaloniaXamlLoader.Load(this)
+
+        // The content
+
         this.FindControl<TabItem>("Drop").Header <- UICommon.GetResourceString "Drop"
         let zone = this.FindControl<TextBlock>("Zone")
         let scroll = this.FindControl<ScrollViewer>("DZ")
@@ -47,6 +50,8 @@ type MainWindow () as this =
                             // Only allow if the dragged data contains text or filenames.
                             if (e.Data.Contains(DataFormats.Text) || e.Data.Contains(DataFormats.FileNames)) |> not then
                                 e.DragEffects <- DragDropEffects.None)) |> ignore
+
+        // "About"
 
         this.FindControl<TabItem>("About").Header <- UICommon.GetResourceString "About"
         this.FindControl<TextBlock>("Program").Text <- "Drophash " + "version todo" //AssemblyVersionInformation.AssemblyFileVersion
