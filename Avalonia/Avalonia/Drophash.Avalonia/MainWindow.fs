@@ -19,7 +19,6 @@ module UICommon =
 type MainWindow () as this =
     inherit Window()
 
-    let mutable armed = false
     let sink = System.Collections.Generic.List<IDisposable>()
 
     do this.InitializeComponent()
@@ -74,12 +73,7 @@ type MainWindow () as this =
         link.Text <- """<center><a href="http://www.github.com/SteveGilham">""" +
                       UICommon.GetResourceString "WebsiteLabel" +
                       "</a></center>"
-
-        link.PointerPressed |> Event.add (fun _ -> armed <- true)
-        link.PointerLeave |> Event.add (fun _ -> armed <- false)
-        link.PointerReleased
-        |> Event.add (fun _ -> ())
-
+        // Buttom needs style and Click ->
         // Windows -- Process Start (url)
         // Mac -- ("open", url)
         // *nix -- ("xdg-open", url)
