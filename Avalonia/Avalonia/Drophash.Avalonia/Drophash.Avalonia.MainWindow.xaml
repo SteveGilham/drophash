@@ -4,16 +4,16 @@
         Title="Drophash.Avalonia"
         Icon="resm:Drophash.Avalonia.drophash.ico">
   <TabControl>
-    <TabItem Name="Drop" Header="Drop">
+    <TabItem Name="Drop" Header="Ďřōƥ Žōňē">
       <ScrollViewer Name="DZ">
         <Border Background="{DynamicResource ThemeAccentBrush2}" Padding="16"
                 Name="Target"
         DragDrop.AllowDrop="True">
-          <TextBlock Name="Zone" TextWrapping="NoWrap"  xml:space="preserve">Drop some text or files here</TextBlock>
+          <TextBlock Name="Zone" TextWrapping="NoWrap"  xml:space="preserve">Ďřōƥ šōɱē ŧēˣŧ ōř ƒĩłēš ĥēřē</TextBlock>
         </Border>
       </ScrollViewer>
     </TabItem>
-    <TabItem Name="About">
+    <TabItem Name="About" Header="Āƀōŭŧ">
       <StackPanel Margin="10">
         <Image Height="128" Width="128" Source="resm:Drophash.Avalonia.drophash32.png" HorizontalAlignment="Center" />
         <TextBlock Name="Program" Margin="10" FontSize="24" FontWeight="ExtraBold" HorizontalAlignment="Center" />
