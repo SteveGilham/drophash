@@ -164,6 +164,12 @@ THE SOFTWARE.</value>
   <data name="Drop" xml:space="preserve">
     <value>Drop Zone</value>
   </data>
+  <data name="Multiple" xml:space="preserve">
+    <value>Dropped {0} files</value>
+  </data>
+  <data name="Singular" xml:space="preserve">
+    <value>Dropped 1 file</value>
+  </data>
   <data name="Zone" xml:space="preserve">
     <value>Drop some text or files here</value>
   </data>

@@ -9,7 +9,8 @@
         <Border Background="{DynamicResource ThemeAccentBrush2}" Padding="16"
                 Name="Target"
                 DragDrop.AllowDrop="True">
-          <TextBlock Name="Zone" TextWrapping="NoWrap" xml:space="preserve">Ďřōƥ šōɱē ŧēˣŧ ōř ƒĩłēš ĥēřē</TextBlock>
+          <TextBlock Name="Zone" TextWrapping="NoWrap" FontFamily="monospace"
+                     xml:space="preserve">Ďřōƥ šōɱē ŧēˣŧ ōř ƒĩłēš ĥēřē</TextBlock>
         </Border>
       </ScrollViewer>
     </TabItem>

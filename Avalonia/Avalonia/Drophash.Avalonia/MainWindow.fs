@@ -7,7 +7,9 @@ open Avalonia.Markup.Xaml
 
 open System
 open System.Globalization
+open System.IO
 open System.Resources
+open System.Security.Cryptography
 
 module UICommon =
 
@@ -20,6 +22,7 @@ type MainWindow () as this =
     inherit Window()
 
     let sink = System.Collections.Generic.List<IDisposable>()
+    let mutable first = true
 
     do this.InitializeComponent()
 
@@ -41,20 +44,56 @@ type MainWindow () as this =
         zone.Text <- UICommon.GetResourceString "Zone"
 
         DragDrop.SetAllowDrop(target, true)
+        let buffer = Array.init 4096 (fun _ -> 0uy)
+
         target.AddHandler(DragDrop.DropEvent,
                         new EventHandler<DragEventArgs>(fun _ e ->
                             if e.Data.Contains(DataFormats.FileNames) then
-                                zone.Text <- String.Join(Environment.NewLine, e.Data.GetFileNames())
-                            else if e.Data.Contains(DataFormats.Text) then
-                                zone.Text <- e.Data.GetText()
+                                if first then 
+                                  zone.Text <- String.Empty
+                                  first <- false
+                                let files = e.Data.GetFileNames() |> Seq.toArray
+                                zone.Text <- zone.Text + (if files.Length = 1 then
+                                                           UICommon.GetResourceString "Singular"
+                                                          else String.Format(UICommon.GetResourceString "Multiple", files.Length)) +
+                                                         Environment.NewLine
+                                files
+                                |> Seq.iter (fun n -> 
+                                   use stream = File.OpenRead n
+                                   use md5 = MD5.Create()
+                                   use sha = SHA1.Create()
+                                   use sha2 = SHA256.Create()
+                                   let h = [md5 :> HashAlgorithm
+                                            sha :> HashAlgorithm
+                                            sha2 :> HashAlgorithm]
+                                   h |> List.iter (fun x -> x.Initialize())
+                                   let rec proc () =
+                                     let r = stream.Read(buffer, 0, 4096)
+                                     if r = 4096 then
+                                        h |> List.iter (fun x -> x.TransformBlock(buffer, 0, r, buffer, 0) |> ignore)
+                                        proc()
+                                     else
+                                        h |> List.iter (fun x -> x.TransformFinalBlock(buffer, 0, r) |> ignore)
+                                   proc()
+                                   zone.Text <- zone.Text + n + Environment.NewLine                        
+                                   h 
+                                   |> List.zip ["MD5       "
+                                                "SHA-1     "
+                                                "SHA2-256  "]
+                                   |> List.iter (fun (s,x) -> zone.Text <- zone.Text + s +
+                                                                           String.Join (" ", x.Hash 
+                                                                              |> Seq.pairwise
+                                                                              |> Seq.map (fun (x,y) -> x.ToString("x2") + y.ToString("x2")))
+                                                                              + Environment.NewLine)
+                                   zone.Text <- zone.Text + Environment.NewLine + Environment.NewLine
+                                )
                         )) |> sink.Add
 
         let inProcess = new EventHandler<DragEventArgs>(fun _ e ->
                             // Only allow Copy as Drop Operation.
                             // Only allow if the dragged data contains text or filenames.
                             e.DragEffects <- e.DragEffects &&&
-                                             if e.Data.Contains(DataFormats.Text) ||
-                                                e.Data.Contains(DataFormats.FileNames) then
+                                             if e.Data.Contains(DataFormats.FileNames) then
                                                 DragDropEffects.Copy
                                              else
                                                 DragDropEffects.None)
