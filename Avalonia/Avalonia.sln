@@ -5,8 +5,6 @@ VisualStudioVersion = 15.0.27703.2026
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Drophash.Avalonia", "Avalonia\Drophash.Avalonia\Drophash.Avalonia.fsproj", "{8529FB2A-D065-4A36-A997-21121177A8EA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaApplication1", "AvaloniaApplication1\AvaloniaApplication1.csproj", "{44CCEAD1-80EB-4A1D-98B0-C9290A2ED83C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,10 +15,6 @@ Global
 		{8529FB2A-D065-4A36-A997-21121177A8EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8529FB2A-D065-4A36-A997-21121177A8EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8529FB2A-D065-4A36-A997-21121177A8EA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{44CCEAD1-80EB-4A1D-98B0-C9290A2ED83C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{44CCEAD1-80EB-4A1D-98B0-C9290A2ED83C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{44CCEAD1-80EB-4A1D-98B0-C9290A2ED83C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{44CCEAD1-80EB-4A1D-98B0-C9290A2ED83C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
