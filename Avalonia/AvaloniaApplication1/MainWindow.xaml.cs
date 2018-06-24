@@ -30,7 +30,8 @@ namespace AvaloniaApplication1
                               (x, e) =>
                                 {
                                     if (e.Data.Contains(DataFormats.FileNames))
-                                        zone.Text = String.Join(Environment.NewLine, e.Data.GetFileNames());
+                                        zone.Text = String.Join(Environment.NewLine, 
+                                                    e.Data.GetFileNames());
                                     else if (e.Data.Contains(DataFormats.Text))
                                         zone.Text = e.Data.GetText();
                                 }));
