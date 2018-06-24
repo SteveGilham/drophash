@@ -38,6 +38,7 @@ type MainWindow () as this =
         target.MinHeight <- scroll.Viewport.Height
         scroll.LayoutUpdated |> Event.add ( fun _ -> target.MinWidth <- scroll.Viewport.Width
                                                      target.MinHeight <- scroll.Viewport.Height)
+        zone.Text <- UICommon.GetResourceString "Zone"
 
         DragDrop.SetAllowDrop(target, true)
         target.AddHandler(DragDrop.DropEvent,
@@ -51,7 +52,6 @@ type MainWindow () as this =
         let inProcess = new EventHandler<DragEventArgs>(fun _ e ->
                             // Only allow Copy as Drop Operation.
                             // Only allow if the dragged data contains text or filenames.
-                            zone.Text <- zone.Text + (sprintf ".%A.\n" e.DragEffects)
                             e.DragEffects <- e.DragEffects &&&
                                              if e.Data.Contains(DataFormats.Text) ||
                                                 e.Data.Contains(DataFormats.FileNames) then
