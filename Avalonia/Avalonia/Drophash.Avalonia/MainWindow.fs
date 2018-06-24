@@ -76,7 +76,7 @@ type MainWindow () as this =
         //this.FindControl<Button>("Linked").Click
         //|> Event.add(fun _ -> let state = sink
         //                                  |> Seq.map (fun (x:IDisposable) -> (x :?> System.Reactive.Disposables.ICancelable).IsDisposed )
-        //                      zone.Text <- zone.Text + (sprintf ".%A.\r\n" state))              
+        //                      zone.Text <- zone.Text + (sprintf ".%A.\r\n" state))
         // Buttom needs style and Click ->
         // Windows -- Process Start (url)
         // Mac -- ("open", url)

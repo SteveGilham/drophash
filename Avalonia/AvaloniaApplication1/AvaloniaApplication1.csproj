@@ -12,14 +12,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Remove="drophash.ico" />
-    <None Remove="drophash32.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="drophash.ico" />
-    <EmbeddedResource Include="drophash32.png" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="Avalonia" Version="0.6.2-build5450-beta" />
     <PackageReference Include="Avalonia.Desktop" Version="0.6.2-build5450-beta" />
     <PackageReference Include="Avalonia.HtmlRenderer" Version="0.6.1" />
