@@ -1,4 +1,6 @@
-﻿open Avalonia
+﻿open System.Threading
+
+open Avalonia
 open Avalonia.Controls
 open Avalonia.Logging
 open Avalonia.Logging.Serilog
@@ -10,6 +12,9 @@ let BuildAvaloniaApp() =
 
 [<EntryPoint>]
 let main _ =
+    Thread.CurrentThread.TrySetApartmentState(ApartmentState.STA)
+    |> ignore
+
     AppBuilder.Configure<App>()
         .UsePlatformDetect()
         .Start<MainWindow>()
