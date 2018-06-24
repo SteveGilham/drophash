@@ -34,10 +34,10 @@ type MainWindow () as this =
         let scroll = this.FindControl<ScrollViewer>("DZ")
         let target = this.FindControl<Border>("Target")
 
-        zone.MinWidth <- scroll.Viewport.Width
-        zone.MinHeight <- scroll.Viewport.Height
-        scroll.LayoutUpdated |> Event.add ( fun _ -> zone.MinWidth <- scroll.Viewport.Width
-                                                     zone.MinHeight <- scroll.Viewport.Height)
+        target.MinWidth <- scroll.Viewport.Width
+        target.MinHeight <- scroll.Viewport.Height
+        scroll.LayoutUpdated |> Event.add ( fun _ -> target.MinWidth <- scroll.Viewport.Width
+                                                     target.MinHeight <- scroll.Viewport.Height)
 
         DragDrop.SetAllowDrop(target, true)
         target.AddHandler(DragDrop.DropEvent,
@@ -73,6 +73,10 @@ type MainWindow () as this =
         link.Text <- """<center><a href="http://www.github.com/SteveGilham">""" +
                       UICommon.GetResourceString "WebsiteLabel" +
                       "</a></center>"
+        //this.FindControl<Button>("Linked").Click
+        //|> Event.add(fun _ -> let state = sink
+        //                                  |> Seq.map (fun (x:IDisposable) -> (x :?> System.Reactive.Disposables.ICancelable).IsDisposed )
+        //                      zone.Text <- zone.Text + (sprintf ".%A.\r\n" state))              
         // Buttom needs style and Click ->
         // Windows -- Process Start (url)
         // Mac -- ("open", url)
