@@ -49,7 +49,7 @@ type MainWindow () as this =
         target.AddHandler(DragDrop.DropEvent,
                         new EventHandler<DragEventArgs>(fun _ e ->
                             if e.Data.Contains(DataFormats.FileNames) then
-                                if first then 
+                                if first then
                                   zone.Text <- String.Empty
                                   first <- false
                                 let files = e.Data.GetFileNames() |> Seq.toArray
@@ -58,7 +58,7 @@ type MainWindow () as this =
                                                           else String.Format(UICommon.GetResourceString "Multiple", files.Length)) +
                                                          Environment.NewLine
                                 files
-                                |> Seq.iter (fun n -> 
+                                |> Seq.iter (fun n ->
                                    use stream = File.OpenRead n
                                    use md5 = MD5.Create()
                                    use sha = SHA1.Create()
@@ -75,13 +75,13 @@ type MainWindow () as this =
                                      else
                                         h |> List.iter (fun x -> x.TransformFinalBlock(buffer, 0, r) |> ignore)
                                    proc()
-                                   zone.Text <- zone.Text + n + Environment.NewLine                        
-                                   h 
+                                   zone.Text <- zone.Text + n + Environment.NewLine
+                                   h
                                    |> List.zip ["MD5       "
                                                 "SHA-1     "
                                                 "SHA2-256  "]
                                    |> List.iter (fun (s,x) -> zone.Text <- zone.Text + s +
-                                                                           String.Join (" ", x.Hash 
+                                                                           String.Join (" ", x.Hash
                                                                               |> Seq.pairwise
                                                                               |> Seq.map (fun (x,y) -> x.ToString("x2") + y.ToString("x2")))
                                                                               + Environment.NewLine)
