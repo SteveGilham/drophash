@@ -8,16 +8,17 @@ LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define APPNAME   TEXT("DropHash2017")
 
 //---------------------------------------------------------------------------
+#pragma warning(suppress: 26426)  // No meaningful mitigation
 static std::wstring text(L"Drop files to hash");
 
-static HCURSOR Wait()
+static HCURSOR Wait() noexcept
 {
-	auto cursor = SetCursor(LoadCursor(NULL, IDC_WAIT));
+	auto cursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
 	ShowCursor(TRUE);
 	return cursor;
 }
 
-static void Unwait(HCURSOR cursor)
+static void Unwait(HCURSOR cursor) noexcept
 {
 	ShowCursor(FALSE);
 	SetCursor(cursor);
@@ -63,14 +64,15 @@ U ptr_cast(T input) noexcept
 // Retrieve the system error message for the last-error code
 static DWORD get_error_message(std::wstring & message)
 {
+#pragma warning(suppress: 26429) //What is this smoking? Symbol 'lpMsgBuf' is never tested for nullness, it can be marked as not_null (f.23).
 	gsl::wzstring<> lpMsgBuf{ nullptr };
-	DWORD dw{ GetLastError() };
+	const DWORD dw{ GetLastError() };
 
 	if (FormatMessageW(
 		FORMAT_MESSAGE_ALLOCATE_BUFFER |
 		FORMAT_MESSAGE_FROM_SYSTEM |
 		FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL,
+		nullptr,
 		dw,
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 #pragma warning (suppress : 26412) // no useful mitigation -- it *is* initialised
@@ -78,15 +80,15 @@ static DWORD get_error_message(std::wstring & message)
 		0, NULL))
 	{
 #pragma warning (suppress : 26412 26499) // no useful mitigation
-		auto free_buffer = gsl::finally([&lpMsgBuf]() { LocalFree(lpMsgBuf); });
+		auto free_buffer = gsl::finally([&lpMsgBuf]() noexcept { LocalFree(lpMsgBuf); });
 #pragma warning (suppress : 26401 26413) // can we convince the analyser that this is set?
 		message += *lpMsgBuf;
 	}
 	else
 	{
 		std::array<wchar_t, 128> buffer{ 0 };
-		swprintf_s(&buffer[0], buffer.size(), L"Error %x -- not expanded because %x\n", gsl::narrow<unsigned int>(dw), gsl::narrow<unsigned int>(GetLastError()));
-		message += &buffer[0];
+		swprintf_s(&gsl::at(buffer, 0), buffer.size(), L"Error %x -- not expanded because %x\n", gsl::narrow<unsigned int>(dw), gsl::narrow<unsigned int>(GetLastError()));
+		message += &gsl::at(buffer, 0);
 	}
 
 	return dw;
@@ -94,8 +96,8 @@ static DWORD get_error_message(std::wstring & message)
 
 static void raise_error_message(std::wstring & message)
 {
-	DWORD dw{ get_error_message(message) };
-	MessageBoxW(NULL, message.c_str(), APPNAME, MB_ICONERROR);
+	const DWORD dw{ get_error_message(message) };
+	MessageBoxW(nullptr, message.c_str(), APPNAME, MB_ICONERROR);
 	ExitProcess(dw);
 }
 
@@ -126,7 +128,7 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
 		wndclass.cbWndExtra = 0;
 	wndclass.hInstance = instance;
 	wndclass.hIcon = LoadIconW(instance, MAKEINTRESOURCE(IDI_DROPHASH));
-	wndclass.hCursor = LoadCursorW(NULL, IDC_ARROW);
+	wndclass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
 	wndclass.hbrBackground = ptr_cast<HBRUSH>(GetStockObject(WHITE_BRUSH));
 	wndclass.lpszMenuName = nullptr;
 	wndclass.lpszClassName = MAINCLASS;
@@ -144,12 +146,12 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
 		CW_USEDEFAULT,
 		CW_USEDEFAULT,
 		CW_USEDEFAULT,
-		NULL, NULL, instance, NULL);
+		nullptr, nullptr, instance, nullptr);
 	ShowWindow(hmain, show);
 	UpdateWindow(hmain);
 
 	MSG msg{};
-	while (GetMessageW(&msg, NULL, 0, 0))
+	while (GetMessageW(&msg, nullptr, 0, 0))
 	{
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
@@ -184,13 +186,13 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 	case WM_CREATE:
 	{
 #pragma warning (suppress : 26499) // no useful mitigation
-		client = CreateWindowW(TEXT("edit"), NULL,
+		client = CreateWindowW(TEXT("edit"), nullptr,
 			WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | WS_BORDER | ES_LEFT |
 			ES_MULTILINE | ES_AUTOHSCROLL | ES_AUTOVSCROLL | ES_READONLY,
 			0, 0, 0, 0, hwnd,
 			ptr_cast<HMENU>(gsl::narrow<size_t>(ID_EDIT)),
 			ptr_cast<LPCREATESTRUCT>(lParam)->hInstance,
-			NULL);
+			nullptr);
 
 		{
 			// System font for size
@@ -208,9 +210,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 				return handled;
 			}
 
-			auto context = GetDC(NULL);
+			auto context = GetDC(nullptr);
 #pragma warning (suppress : 26499) // no useful mitigation
-			const auto resetDC = gsl::finally([&context]() {ReleaseDC(NULL, context); });
+			const auto resetDC = gsl::finally([&context]() noexcept {ReleaseDC(nullptr, context); });
 
 			LOGFONTW probe{};
 			probe.lfFaceName[0] = L'\0';
@@ -222,7 +224,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 			// Find a monospace font
 			std::array<std::wstring, 4> faces{ L"Inconsolata", L"Consolas", L"Lucida Console", L"Courier New" };
 
-			std::find_if(faces.begin(), faces.end(), [&result, &probe, &context](std::wstring face) -> bool {
+			std::find_if(faces.begin(), faces.end(), [&result, &probe, &context](std::wstring face) noexcept -> bool {
 #pragma warning (suppress : 26499) // no useful mitigation
 #pragma warning (suppress : 26496) // it is marked as const!!
 				const auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
@@ -270,17 +272,17 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 			if (szArglist && nArgs > 1)
 			{
 #pragma warning (suppress : 26499) // no useful mitigation
-				auto releaseArgs = gsl::finally([&szArglist]() {LocalFree(szArglist); });
+				auto releaseArgs = gsl::finally([&szArglist]() noexcept {LocalFree(szArglist); });
 
 				// Skip the executable name
-				gsl::span<gsl::wzstring<>> args{ std::next(szArglist), std::next(szArglist, nArgs) };
+				const gsl::span<gsl::wzstring<>> args{ std::next(szArglist), std::next(szArglist, nArgs) };
 
 				// pointer arithmetic, yuck!!
-				SIZE_T wideheader{ (sizeof(DROPFILES) + sizeof(wchar_t) - 1) / sizeof(wchar_t) };
-				SIZE_T header{ wideheader * sizeof(wchar_t) };
+				const SIZE_T wideheader{ (sizeof(DROPFILES) + sizeof(wchar_t) - 1) / sizeof(wchar_t) };
+				const SIZE_T header{ wideheader * sizeof(wchar_t) };
 				SIZE_T buffersize{ header };
 
-				std::for_each(args.begin(), args.end(), [&buffersize](gsl::wzstring<> in) {
+				std::for_each(args.begin(), args.end(), [&buffersize](gsl::wzstring<> in) noexcept {
 					buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
 				});
 
@@ -289,9 +291,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 				{
 					void * memory = GlobalLock(hGlobal);
 #pragma warning (suppress : 26499) // no useful mitigation
-					auto unlock = gsl::finally([&hGlobal]() {GlobalUnlock(hGlobal); });
+					auto unlock = gsl::finally([&hGlobal]() noexcept {GlobalUnlock(hGlobal); });
 
-					gsl::span<wchar_t> characters{
+					const gsl::span<wchar_t> characters{
 						data_cast<wchar_t>(memory),
 						gsl::narrow<int>(buffersize / sizeof(wchar_t))
 					};
@@ -307,6 +309,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 					auto end{ characters.end() };
 
 					std::for_each(args.begin(), args.end(), [&buffer, &end](gsl::wzstring<> in) {
+#pragma warning(suppress: 26446) // using gsl::at fails with : 'size': is not a member of 'gsl::contiguous_span_iterator<gsl::span<wchar_t,-1>>'
 						wcscpy_s(&buffer[0], gsl::narrow<rsize_t>(end - buffer), in);
 						std::advance(buffer, (wcslen(in) + 1));
 					});
@@ -340,7 +343,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 	{
 		auto cursor = Wait();
 #pragma warning (suppress : 26499) // no useful mitigation
-		auto unwait = gsl::finally([&cursor]() {Unwait(cursor); });
+		auto unwait = gsl::finally([&cursor]() noexcept {Unwait(cursor); });
 		auto render = gsl::finally([]() {
 			text += L"\r\n";
 			SetWindowText(client, text.c_str());
@@ -348,9 +351,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
 		auto drop = ptr_cast<HDROP>(wParam);
 #pragma warning (suppress : 26499) // no useful mitigation
-		auto finishDrag = gsl::finally([&drop]() { DragFinish(drop); });
+		auto finishDrag = gsl::finally([&drop]() noexcept { DragFinish(drop); });
 
-		UINT nfiles = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
+		const UINT nfiles = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
 
 		text += L"Dropped " + std::to_wstring(nfiles) +
 			L" files\r\n";
@@ -368,19 +371,21 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 		}
 
 		// and manage its lifetime
-		auto releaseContext = gsl::finally([&hProv]() {CryptReleaseContext(hProv, 0); });
+		auto releaseContext = gsl::finally([&hProv]() noexcept {CryptReleaseContext(hProv, 0); });
 
 		// Now hash each file in turn
 		for (UINT i = 0; i < nfiles; ++i)
 		{
-			UINT length = DragQueryFileW(drop, i, nullptr, 0);
+			const UINT length = DragQueryFileW(drop, i, nullptr, 0);
+#pragma warning(suppress: 26489) // what is this smoking? Don't dereference a pointer that may be invalid: '&fn'. 'fn' may have been invalidated at line 377 (lifetime.1).
 			std::vector<wchar_t> fn(length + 1);
-			DragQueryFileW(drop, i, &fn[0], gsl::narrow<UINT>(fn.size()));
+			DragQueryFileW(drop, i, &gsl::at(fn, 0), gsl::narrow<UINT>(fn.size()));
 
 			typedef std::tuple<std::wstring, DWORD, DWORD> Recipe;
 			typedef std::tuple<std::wstring, HCRYPTHASH, DWORD> Record;
 			bool is_good = true;
 
+#pragma warning(suppress: 26489) // what is this smoking? Don't dereference a pointer that may be invalid: '&inputs'. 'inputs' may have been invalidated at line 384 (lifetime.1).
 			std::vector<Recipe> inputs;
 			inputs.push_back(std::make_tuple(L"MD5     ", CALG_MD5, 16));
 			inputs.push_back(std::make_tuple(L"SHA     ", CALG_SHA1, 20));
@@ -391,7 +396,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 #pragma warning (suppress : 26493) // implicit 'C'-style cast
 			auto releaseResults = gsl::finally([&results]() {for (auto item : results)
 			{
-				auto hash = std::get<1>(item);
+				const auto hash = std::get<1>(item);
 				if (hash) { CryptDestroyHash(hash); }
 			}});
 			results.resize(inputs.size());
@@ -413,17 +418,17 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 					std::get<2>(in));
 			});
 
-			text += &fn[0];
+			text += &gsl::at(fn, 0);
 			text += L"\r\n";
 
 #pragma warning (suppress : 26493) // implicit 'C'-style cast
-			std::ifstream file{ &fn[0], std::ios::in | std::ios::binary };
+			std::ifstream file{ &gsl::at(fn, 0), std::ios::in | std::ios::binary };
 			std::array<char, 4096> chunk{};
 			if (file.is_open())
 			{
 				for (;;)
 				{
-					file.read(&chunk[0], gsl::narrow<std::streamsize>(chunk.size()));
+					file.read(&gsl::at(chunk, 0), gsl::narrow<std::streamsize>(chunk.size()));
 
 					DWORD got = gsl::narrow<DWORD>(file.gcount());
 					auto chunkBYTEs{ gsl::as_span<BYTE>(gsl::as_bytes(gsl::as_span(chunk))) };
@@ -431,7 +436,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 #pragma warning (suppress : 26496) // it is marked as const!!
 					const auto check =
 						std::find_if(results.begin(), results.end(), [&chunkBYTEs, &got](Record hash) -> bool {
-						auto handle = std::get<1>(hash);
+						const auto handle = std::get<1>(hash);
 						if (!handle || CryptHashData(handle, &chunkBYTEs[0], got, 0))
 						{
 							return false;
@@ -461,10 +466,10 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 				std::for_each(results.begin(), results.end(), [](Record hash) {
 					DWORD hash_size = std::get<2>(hash);
 					std::vector<BYTE> buffer(hash_size);
-					auto handle = std::get<1>(hash);
+					const auto handle = std::get<1>(hash);
 					if (handle)
 					{
-						if (CryptGetHashParam(handle, HP_HASHVAL, &buffer[0], &hash_size, 0))
+						if (CryptGetHashParam(handle, HP_HASHVAL, &gsl::at(buffer, 0), &hash_size, 0))
 						{
 							text += std::get<0>(hash) + L": ";
 							format_hex_string(buffer, text);
