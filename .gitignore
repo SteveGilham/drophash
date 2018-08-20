@@ -49,3 +49,6 @@ Temporary Items
 .vs/
 binaries/
 packages/
+*.user
+**/bin
+**/obj
