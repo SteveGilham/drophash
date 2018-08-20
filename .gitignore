@@ -50,3 +50,5 @@ Temporary Items
 binaries/
 packages/
 *.user
+**/bin
+**/obj
