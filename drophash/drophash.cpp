@@ -376,9 +376,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 		// Now hash each file in turn
 		for (UINT i = 0; i < nfiles; ++i)
 		{
-			const UINT length = DragQueryFileW(drop, i, nullptr, 0);
+			const UINT length = DragQueryFileW(drop, i, nullptr, 0) + 1;
 #pragma warning(suppress: 26489) // what is this smoking? Don't dereference a pointer that may be invalid: '&fn'. 'fn' may have been invalidated at line 377 (lifetime.1).
-			std::vector<wchar_t> fn(length + 1);
+			std::vector<wchar_t> fn(length);
 			DragQueryFileW(drop, i, &gsl::at(fn, 0), gsl::narrow<UINT>(fn.size()));
 
 			typedef std::tuple<std::wstring, DWORD, DWORD> Recipe;
