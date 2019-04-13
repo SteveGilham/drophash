@@ -5,7 +5,7 @@
 
 LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define MAINCLASS TEXT("DropHashClass")
-#define APPNAME   TEXT("DropHash2017")
+#define APPNAME   TEXT("DropHash2019")
 
 //---------------------------------------------------------------------------
 #pragma warning(suppress: 26426)  // No meaningful mitigation
@@ -26,6 +26,7 @@ static void Unwait(HCURSOR cursor) noexcept
 }
 
 // POD-ptr to POD-ptr
+#pragma warning (suppress : 26487) // done in controlled fashion
 template <typename U, typename T>
 U* data_cast(T* input) noexcept
 {
@@ -57,7 +58,7 @@ U ptr_cast(T input) noexcept
 		|| (std::is_integral<T>::value), // int can be expanded
 		"The input must be a POD-pointer-like type.");
 
-#pragma warning (suppress : 26490 26471) // done in controlled fashion, some casts from void* can't be static e.g to WPARAM
+#pragma warning (suppress : 26490 26471 26487) // done in controlled fashion, some casts from void* can't be static e.g to WPARAM
 	return reinterpret_cast<U>(input);
 }
 
@@ -282,7 +283,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 				const SIZE_T header{ wideheader * sizeof(wchar_t) };
 				SIZE_T buffersize{ header };
 
-				std::for_each(args.begin(), args.end(), [&buffersize](gsl::wzstring<> in) noexcept {
+#pragma warning (suppress : 26486) // it really doesn't like spans like `args`
+                std::for_each(args.begin(), args.end(), [&buffersize](gsl::wzstring<> in) noexcept {
 					buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
 				});
 
@@ -304,17 +306,22 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 					pDropFiles->pt.x = pDropFiles->pt.y = 0;
 					pDropFiles->fNC = FALSE;
 
-					auto buffer{ characters.begin() };
+#pragma warning (suppress : 26486) // it really doesn't like spans
+                    auto buffer{ characters.begin() };
+#pragma warning (suppress : 26486) // it really doesn't like spans
 					std::advance(buffer, wideheader);
+#pragma warning (suppress : 26486) // it really doesn't like spans
 					auto end{ characters.end() };
 
-					std::for_each(args.begin(), args.end(), [&buffer, &end](gsl::wzstring<> in) {
+#pragma warning (suppress : 26486) // it really doesn't like spans like `args`
+                    std::for_each(args.begin(), args.end(), [&buffer, &end](gsl::wzstring<> in) {
 #pragma warning(suppress: 26446) // using gsl::at fails with : 'size': is not a member of 'gsl::contiguous_span_iterator<gsl::span<wchar_t,-1>>'
 						wcscpy_s(&buffer[0], gsl::narrow<rsize_t>(end - buffer), in);
 						std::advance(buffer, (wcslen(in) + 1));
 					});
 
-					*buffer = L'\0';
+#pragma warning (suppress : 26486 26489) // it really doesn't like spans
+                    *buffer = L'\0';
 
 					// send DnD event
 					PostMessage(hwnd, WM_DROPFILES, ptr_cast<WPARAM>(hGlobal), 0);
@@ -394,7 +401,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
 			std::vector<Record> results;
 #pragma warning (suppress : 26493) // implicit 'C'-style cast
-			auto releaseResults = gsl::finally([&results]() {for (auto item : results)
+			auto releaseResults = gsl::finally([&results]() noexcept {for (auto & item : results)
 			{
 				const auto hash = std::get<1>(item);
 				if (hash) { CryptDestroyHash(hash); }
