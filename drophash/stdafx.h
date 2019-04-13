@@ -5,6 +5,7 @@
 
 #pragma once
 #pragma warning (disable : 4514 4710 4711) // inlining
+#pragma warning (disable: 5045) // TODO Spectre
 
 // #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files:
