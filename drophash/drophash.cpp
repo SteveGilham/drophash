@@ -31,9 +31,9 @@ static void Unwait(HCURSOR cursor) noexcept
 template <typename U, typename T>
 U* data_cast(T* input) noexcept
 {
-  static_assert(std::is_pod<U>::value || std::is_void<U>::value,
+  static_assert(std::is_trivially_copyable<U>::value || std::is_void<U>::value,
     "The output must be a trivial type.");
-  static_assert(std::is_pod<T>::value,
+  static_assert(std::is_trivially_copyable<T>::value,
     "The input must be a trivial type.");
 
 #pragma warning (suppress : 26490) // done in controlled fashion
@@ -43,7 +43,7 @@ U* data_cast(T* input) noexcept
 template <typename U>
 U* data_cast(void* input) noexcept
 {
-  static_assert(std::is_pod<U>::value || std::is_void<U>::value,
+  static_assert(std::is_trivially_copyable<U>::value || std::is_void<U>::value,
     "The output must be a trivial type.");
   return static_cast<U*>(input);
 }
@@ -52,10 +52,10 @@ U* data_cast(void* input) noexcept
 template <typename U, typename T>
 U ptr_cast(T input) noexcept
 {
-  static_assert((std::is_pointer<U>::value && std::is_pod<std::remove_pointer<U>>::value)
+  static_assert((std::is_pointer<U>::value && std::is_trivially_copyable<std::remove_pointer<U>>::value)
     || (std::is_integral<U>::value && sizeof(U) >= sizeof(int*)),
     "The output must be a POD-pointer-like type.");
-  static_assert((std::is_pointer<T>::value && std::is_pod<std::remove_pointer<T>>::value)
+  static_assert((std::is_pointer<T>::value && std::is_trivially_copyable<std::remove_pointer<T>>::value)
     || (std::is_integral<T>::value), // int can be expanded
     "The input must be a POD-pointer-like type.");
 
@@ -103,7 +103,7 @@ static void raise_error_message(std::wstring& message)
 static void format_hex_string(std::vector<BYTE>& buffer, std::wstring& sink)
 {
   std::wstringstream stream{};
-  std::for_each(buffer.begin(), buffer.end(), [&stream](BYTE x) {
+  std::ranges::for_each(buffer, [&stream](BYTE x) {
     static int count = 1;
     stream << std::setfill(L'0') << std::setw(2) << std::hex << x;
     if ((++count) % 2) stream << L" ";
@@ -217,7 +217,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
       std::array<std::wstring, 4> faces{ L"Inconsolata", L"Consolas", L"Lucida Console", L"Courier New" };
 
       auto ignored =
-        std::find_if(faces.begin(), faces.end(), [&result, &probe, &context](std::wstring face) noexcept -> bool {
+        std::ranges::find_if(faces, [&result, &probe, &context](std::wstring face) noexcept -> bool {
         const auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
 #pragma warning (suppress : 26493) // C-style cast in these macros
         if (!FAILED(hr))
@@ -266,14 +266,18 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
         // Skip the executable name
         const gsl::span<gsl::wzstring<>> args{ std::next(szArglist), std::next(szArglist, nArgs) };
+        // want
+        // auto args = std::ranges::views::counted(std::next(szArglist), static_cast<ptrdiff_t>(nArgs));
 
         // pointer arithmetic, yuck!!
-        constexpr SIZE_T wideheader{ (sizeof(DROPFILES) + sizeof(wchar_t) - 1) / sizeof(wchar_t) };
+        constexpr SIZE_T wideheader{
+        (sizeof(DROPFILES) + sizeof(wchar_t) - 1) / sizeof(wchar_t)
+        };
         constexpr SIZE_T header{ wideheader * sizeof(wchar_t) };
         SIZE_T buffersize{ header };
 
 #pragma warning (suppress : 26486) // it really doesn't like spans like `args`
-        std::for_each(args.begin(), args.end(), [&buffersize](gsl::wzstring<> in) noexcept {
+        std::ranges::for_each(args, [&buffersize](gsl::wzstring<> in) noexcept {
           buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
           });
 
@@ -302,7 +306,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           auto end{ characters.end() };
 
 #pragma warning (suppress : 26486) // it really doesn't like spans like `args`
-          std::for_each(args.begin(), args.end(), [&buffer, &end](gsl::wzstring<> in) {
+          std::ranges::for_each(args, [&buffer, &end](gsl::wzstring<> in) {
 #pragma warning(suppress: 26446) // using gsl::at fails with : 'size': is not a member of 'gsl::contiguous_span_iterator<gsl::span<wchar_t,-1>>'
             wcscpy_s(&buffer[0], gsl::narrow<rsize_t>(end - buffer), in);
             std::advance(buffer, (wcslen(in) + 1));
@@ -391,7 +395,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
         if (hash) { CryptDestroyHash(hash); }
       }});
       results.resize(inputs.size());
-      std::transform(inputs.begin(), inputs.end(), results.begin(), [&hProv](Recipe in) -> Record {
+      std::ranges::transform(inputs, results.begin(), [&hProv](Recipe in) -> Record {
         HCRYPTHASH hHash = 0;
 
         if (!CryptCreateHash(hProv, std::get<1>(in), 0, 0, &hHash))
@@ -423,7 +427,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           auto chunkBYTEs{ gsl::as_span<BYTE>(gsl::as_bytes(gsl::as_span(chunk))) };
 
           const auto check =
-            std::find_if(results.begin(), results.end(), [&chunkBYTEs, &got](Record hash) -> bool {
+            std::ranges::find_if(results, [&chunkBYTEs, &got](Record hash) -> bool {
             const auto handle = std::get<1>(hash);
             if (!handle || CryptHashData(handle, &chunkBYTEs[0], got, 0))
             {
@@ -451,7 +455,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
         }
 
         // Format the outputs
-        std::for_each(results.begin(), results.end(), [](Record hash) {
+        std::ranges::for_each(results, [](Record hash) {
           DWORD hash_size = std::get<2>(hash);
           std::vector<BYTE> buffer(hash_size);
           const auto handle = std::get<1>(hash);
