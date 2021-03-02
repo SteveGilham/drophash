@@ -298,17 +298,18 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           pDropFiles->pt.x = pDropFiles->pt.y = 0;
           pDropFiles->fNC = FALSE;
 
-          auto buffer{ characters.begin() };
-          std::advance(buffer, wideheader);
-          auto end{ characters.end() };
+          auto cursor{ characters.begin() }; // mutable write-to point
+          std::advance(cursor, wideheader);
+          const auto end{ characters.end() }; // fixed buffer end
 
-          std::ranges::for_each(args, [&buffer, &end](gsl::wzstring<> in) {
+          std::ranges::for_each(args, [&cursor, &end](gsl::wzstring<> in) {
 #pragma warning(suppress: 26446) // using gsl::at fails with : 'size': is not a member of 'gsl::contiguous_span_iterator<gsl::span<wchar_t,-1>>'
-            wcscpy_s(&buffer[0], gsl::narrow<rsize_t>(end - buffer), in);
-            std::advance(buffer, (wcslen(in) + 1));
+            // gsl::at is a value, not an indexed location anyway
+            wcscpy_s(&cursor[0], gsl::narrow<rsize_t>(end - cursor), in);
+            std::advance(cursor, wcslen(in) + 1);
             });
 
-          *buffer = L'\0';
+          *cursor = L'\0';
 
           // send DnD event
           PostMessage(hwnd, WM_DROPFILES, ptr_cast<WPARAM>(hGlobal), 0);
