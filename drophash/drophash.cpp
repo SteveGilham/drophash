@@ -175,6 +175,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
   static HWND client;
   constexpr LRESULT handled{ 0L };
 
+#pragma warning (suppress : 26818) //do-nothing implied default is enough
   switch (message)
   {
   case WM_CREATE:
