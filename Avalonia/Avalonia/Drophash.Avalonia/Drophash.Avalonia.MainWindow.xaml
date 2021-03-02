@@ -1,6 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:html="clr-namespace:Avalonia.Controls.Html;assembly=Avalonia.HtmlRenderer"
+        x:Class="Drophash.Avalonia.MainWindow"
         Title="Drophash.Avalonia"
         Icon="resm:Drophash.Avalonia.drophash.ico">
   <TabControl>
@@ -20,8 +20,12 @@
         <TextBlock Name="Program" Margin="10" FontSize="24" FontWeight="ExtraBold" HorizontalAlignment="Center" />
         <TextBlock Name="Description"  HorizontalAlignment="Center" TextAlignment="Center" />
         <TextBlock Name="Copyright" Margin="10" FontSize="8" HorizontalAlignment="Center" />
-        <Button Name="Linked">
-          <html:HtmlLabel Name="Link" MinHeight="20" Focusable="True" HorizontalAlignment="Center" />
+        <Button Name="LinkButton" HorizontalAlignment="Center"
+                      BorderThickness="0,0,0,1" Foreground="DarkBlue"
+                      Padding="0" Margin="0">
+          <TextBlock Name="Link"
+                           TextAlignment="Center" Background="White"
+                           HorizontalAlignment="Center" />
         </Button>
         <Expander Name="Expander" Margin="10" HorizontalAlignment="Center" MinWidth="500" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
           <Expander.Header>

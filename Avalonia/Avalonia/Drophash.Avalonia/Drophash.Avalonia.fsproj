@@ -8,13 +8,13 @@
   <ItemGroup>
     <EmbeddedResource Include="drophash.ico" />
     <EmbeddedResource Include="drophash32.png" />
-    <EmbeddedResource Include="Drophash.Avalonia.MainWindow.xaml">
+    <AvaloniaResource Include="Drophash.Avalonia.MainWindow.xaml">
       <LogicalName>Drophash.Avalonia.MainWindow.xaml</LogicalName>
-    </EmbeddedResource>
+    </AvaloniaResource>
 
-    <EmbeddedResource Include="Drophash.Avalonia.App.xaml">
+    <AvaloniaResource Include="Drophash.Avalonia.App.xaml">
       <LogicalName>Drophash.Avalonia.App.xaml</LogicalName>
-    </EmbeddedResource>
+    </AvaloniaResource>
   </ItemGroup>
 
   <ItemGroup>
@@ -26,14 +26,15 @@
   <ItemGroup />
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="0.7.0" />
-    <PackageReference Include="Avalonia.Desktop" Version="0.7.0" />
-    <PackageReference Include="Avalonia.HtmlRenderer" Version="0.6.1" />
-    <PackageReference Include="System.Reactive.Core" Version="4.1.2" />
+    <PackageReference Include="Avalonia" Version="0.10.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="0.10.0" />
+    <PackageReference Include="System.Reactive.Core" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="4.5.2" />
-  </ItemGroup>
 
+    <PackageReference Update="FSharp.Core" Version="5.0.1">
+      <ExcludeAssets>contentfiles</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
 </Project>

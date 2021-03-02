@@ -21,7 +21,6 @@ module UICommon =
 type MainWindow () as this =
     inherit Window()
 
-    let sink = System.Collections.Generic.List<IDisposable>()
     let mutable first = true
 
     do this.InitializeComponent()
@@ -87,7 +86,7 @@ type MainWindow () as this =
                                                                               + Environment.NewLine)
                                    zone.Text <- zone.Text + Environment.NewLine + Environment.NewLine
                                 )
-                        )) |> sink.Add
+                        ))
 
         let inProcess = new EventHandler<DragEventArgs>(fun _ e ->
                             // Only allow Copy as Drop Operation.
@@ -97,7 +96,7 @@ type MainWindow () as this =
                                                 DragDropEffects.Copy
                                              else
                                                 DragDropEffects.None)
-        target.AddHandler(DragDrop.DragOverEvent, inProcess) |> sink.Add
+        target.AddHandler(DragDrop.DragOverEvent, inProcess)
 
         // "About"
 
@@ -108,19 +107,15 @@ type MainWindow () as this =
         let copyright = "copyright todo" //AssemblyVersionInformation.AssemblyCopyright
         this.FindControl<TextBlock>("Copyright").Text <- copyright
 
-        let link = this.FindControl<HtmlLabel>("Link")
-        link.Text <- """<center><a href="http://www.github.com/SteveGilham">""" +
-                      UICommon.GetResourceString "WebsiteLabel" +
-                      "</a></center>"
-        //this.FindControl<Button>("Linked").Click
-        //|> Event.add(fun _ -> let state = sink
-        //                                  |> Seq.map (fun (x:IDisposable) -> (x :?> System.Reactive.Disposables.ICancelable).IsDisposed )
-        //                      zone.Text <- zone.Text + (sprintf ".%A.\r\n" state))
-        // Buttom needs style and Click ->
-        // Windows -- Process Start (url)
-        // Mac -- ("open", url)
-        // *nix -- ("xdg-open", url)
-        //Application.Instance.Open("http://www.github.com/SteveGilham"))
+        let link = this.FindControl<TextBlock>("Link")
+        link.Text <- UICommon.GetResourceString "WebsiteLabel"
+        let linkButton = this.FindControl<Button>("LinkButton")
+
+        linkButton.Click
+        |> Event.add
+             (fun _ ->
+               Avalonia.Dialogs.AboutAvaloniaDialog.OpenBrowser
+                 "http://www.github.com/SteveGilham/drophash")
 
         this.FindControl<TextBlock>("License").Text <- UICommon.GetResourceString "AboutDialog.License"
         this.FindControl<TextBlock>("MIT").Text <- String.Format(CultureInfo.InvariantCulture,
