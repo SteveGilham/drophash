@@ -216,7 +216,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
       // Find a monospace font
       std::array<std::wstring, 4> faces{ L"Inconsolata", L"Consolas", L"Lucida Console", L"Courier New" };
 
-      auto ignored =
+      const auto ignored =
         std::ranges::find_if(faces, [&result, &probe, &context](std::wstring face) noexcept -> bool {
         const auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
 #pragma warning (suppress : 26493) // C-style cast in these macros
@@ -265,7 +265,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
         auto releaseArgs = gsl::finally([&szArglist]() noexcept {LocalFree(szArglist); });
 
         // Skip the executable name
-        const gsl::span<gsl::wzstring<>> args{ std::next(szArglist), std::next(szArglist, nArgs) };
+#pragma warning (suppress : 26821) // only used as a range
+        const std::span<gsl::wzstring<>> args{ std::next(szArglist), std::next(szArglist, nArgs) };
         // want
         // auto args = std::ranges::views::counted(std::next(szArglist), static_cast<ptrdiff_t>(nArgs));
 
@@ -276,7 +277,6 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
         constexpr SIZE_T header{ wideheader * sizeof(wchar_t) };
         SIZE_T buffersize{ header };
 
-#pragma warning (suppress : 26486) // it really doesn't like spans like `args`
         std::ranges::for_each(args, [&buffersize](gsl::wzstring<> in) noexcept {
           buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
           });
@@ -298,22 +298,17 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           pDropFiles->pt.x = pDropFiles->pt.y = 0;
           pDropFiles->fNC = FALSE;
 
-#pragma warning (suppress : 26486) // it really doesn't like spans
           auto buffer{ characters.begin() };
-#pragma warning (suppress : 26486) // it really doesn't like spans
           std::advance(buffer, wideheader);
-#pragma warning (suppress : 26486) // it really doesn't like spans
           auto end{ characters.end() };
 
-#pragma warning (suppress : 26486) // it really doesn't like spans like `args`
           std::ranges::for_each(args, [&buffer, &end](gsl::wzstring<> in) {
 #pragma warning(suppress: 26446) // using gsl::at fails with : 'size': is not a member of 'gsl::contiguous_span_iterator<gsl::span<wchar_t,-1>>'
             wcscpy_s(&buffer[0], gsl::narrow<rsize_t>(end - buffer), in);
             std::advance(buffer, (wcslen(in) + 1));
             });
 
-#pragma warning (suppress : 26486 26489) // it really doesn't like spans
-          * buffer = L'\0';
+          *buffer = L'\0';
 
           // send DnD event
           PostMessage(hwnd, WM_DROPFILES, ptr_cast<WPARAM>(hGlobal), 0);

@@ -27,6 +27,7 @@
 #include <vector>
 #include <array>
 #include <ranges>
+#include <span>
 
 #include "Resource.h"
 #pragma warning (pop)
