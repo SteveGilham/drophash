@@ -8,12 +8,10 @@ LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define APPNAME   TEXT("DropHash2020")
 
 //---------------------------------------------------------------------------
-#pragma warning(suppress: 26426)  // No meaningful mitigation
 static std::wstring text(L"Drop files to hash");
 
 static HCURSOR Wait() noexcept
 {
-#pragma warning (suppress : 26493) // C-style cast in these macros
   auto cursor = SetCursor(LoadCursor(nullptr, IDC_WAIT));
   ShowCursor(TRUE);
   return cursor;
@@ -27,7 +25,6 @@ static void Unwait(HCURSOR cursor) noexcept
 }
 
 // POD-ptr to POD-ptr
-#pragma warning (suppress : 26487) // done in controlled fashion
 template <typename U, typename T>
 U* data_cast(T* input) noexcept
 {
@@ -59,7 +56,7 @@ U ptr_cast(T input) noexcept
     || (std::is_integral<T>::value), // int can be expanded
     "The input must be a POD-pointer-like type.");
 
-#pragma warning (suppress : 26490 26471 26487) // done in controlled fashion, some casts from void* can't be static e.g to WPARAM
+#pragma warning (suppress : 26490 26471) // done in controlled fashion, some casts from void* can't be static e.g to WPARAM
   return reinterpret_cast<U>(input);
 }
 
@@ -219,7 +216,6 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
       const auto ignored =
         std::ranges::find_if(faces, [&result, &probe, &context](std::wstring face) noexcept -> bool {
         const auto hr = wcscpy_s(&probe.lfFaceName[0], LF_FACESIZE, face.c_str());
-#pragma warning (suppress : 26493) // C-style cast in these macros
         if (!FAILED(hr))
         {
           EnumFontFamiliesExW(
@@ -266,16 +262,14 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
         // Skip the executable name
 #pragma warning (suppress : 26821) // only used as a range
-        const std::span<gsl::wzstring<>> args{ std::next(szArglist), std::next(szArglist, nArgs) };
-        // want
-        // auto args = std::ranges::views::counted(std::next(szArglist), static_cast<ptrdiff_t>(nArgs));
+        auto args = std::ranges::views::counted(std::next(szArglist), static_cast<ptrdiff_t>(nArgs) - 1);
 
         // pointer arithmetic, yuck!!
         constexpr SIZE_T wideheader{
         (sizeof(DROPFILES) + sizeof(wchar_t) - 1) / sizeof(wchar_t)
         };
         constexpr SIZE_T header{ wideheader * sizeof(wchar_t) };
-        SIZE_T buffersize{ header };
+        SIZE_T buffersize{ header + sizeof(wchar_t) };
 
         std::ranges::for_each(args, [&buffersize](gsl::wzstring<> in) noexcept {
           buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
@@ -303,9 +297,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           const auto end{ characters.end() }; // fixed buffer end
 
           std::ranges::for_each(args, [&cursor, &end](gsl::wzstring<> in) {
-#pragma warning(suppress: 26446) // using gsl::at fails with : 'size': is not a member of 'gsl::contiguous_span_iterator<gsl::span<wchar_t,-1>>'
-            // gsl::at is a value, not an indexed location anyway
-            wcscpy_s(&cursor[0], gsl::narrow<rsize_t>(end - cursor), in);
+            wcscpy_s(std::to_address(cursor), gsl::narrow<rsize_t>(end - cursor), in);
             std::advance(cursor, wcslen(in) + 1);
             });
 
@@ -328,7 +320,6 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
   case WM_SIZE:
   {
-#pragma warning (suppress : 26493) // C-style cast in these macros
     MoveWindow(client, 0, 0, LOWORD(lParam),
       HIWORD(lParam), TRUE);
     return handled;
