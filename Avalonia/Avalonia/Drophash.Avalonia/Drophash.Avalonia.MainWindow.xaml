@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Drophash.Avalonia.MainWindow"
+        Title="Drophash.Avalonia"
+        Icon="resm:Drophash.Avalonia.drophash.ico">
+  <TabControl>
+    <TabItem Name="Drop" Header="Ďřōƥ Žōňē">
+      <ScrollViewer Name="DZ">
+        <Border Background="{DynamicResource ThemeAccentBrush2}" Padding="16"
+                Name="Target"
+                DragDrop.AllowDrop="True">
+          <TextBlock Name="Zone" TextWrapping="NoWrap" FontFamily="monospace"
+                     xml:space="preserve">Ďřōƥ šōɱē ŧēˣŧ ōř ƒĩłēš ĥēřē</TextBlock>
+        </Border>
+      </ScrollViewer>
+    </TabItem>
+    <TabItem Name="About" Header="Āƀōŭŧ">
+      <StackPanel Margin="10">
+        <Image Height="128" Width="128" Source="resm:Drophash.Avalonia.drophash32.png" HorizontalAlignment="Center" />
+        <TextBlock Name="Program" Margin="10" FontSize="24" FontWeight="ExtraBold" HorizontalAlignment="Center" />
+        <TextBlock Name="Description"  HorizontalAlignment="Center" TextAlignment="Center" />
+        <TextBlock Name="Copyright" Margin="10" FontSize="8" HorizontalAlignment="Center" />
+        <Button Name="LinkButton" HorizontalAlignment="Center"
+                      BorderThickness="0,0,0,1" Foreground="DarkBlue"
+                      Padding="0" Margin="0">
+          <TextBlock Name="Link"
+                           TextAlignment="Center" Background="White"
+                           HorizontalAlignment="Center" />
+        </Button>
+        <Expander Name="Expander" Margin="10" HorizontalAlignment="Center" MinWidth="500" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+          <Expander.Header>
+            <TextBlock Name="License" />
+          </Expander.Header>
+          <ScrollViewer MaxHeight="400" HorizontalAlignment="Center">
+            <TextBlock Name="MIT" MinHeight="100" Width="500" TextWrapping="NoWrap" xml:space="preserve" />
+          </ScrollViewer>
+        </Expander>
+      </StackPanel>
+    </TabItem>
+  </TabControl>
+</Window>
