@@ -31,7 +31,7 @@ init([]) ->
                  period => 1},
     ChildSpec = #{
         id      => drophash, % anything but a pid()
-        start   => {drophash, start_link, []}
+        start   => {drophash_win, start_link, []}
     },                 
     ChildSpecs = [ ChildSpec ],
     {ok, {SupFlags, ChildSpecs}}.
