@@ -40,7 +40,7 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 %% object_wx callbacks
 -spec init(list()) -> {wxFrame:wxFrame(), state()}.
 init(_) ->
-    wx:new(),
+    _Object = wx:new(),
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, "drophash", []),
     Text = wxTextCtrl:new(Frame, ?wxID_ANY),
     wxTextCtrl:setEditable(Text, false),
@@ -48,7 +48,8 @@ init(_) ->
     
     wxFrame:show(Frame),
     wxFrame:raise(Frame),
-    %% does nothing %% wxTextCtrl:connect(Text, drop_files),
+    %% does nothing %%    wxFrame:connect(Frame, drop_files),
+    %% does what you'd expect %%    wxTextCtrl:connect(Text, motion),
     
     % want to do
     %% dt = FileDropTarget(pane)
