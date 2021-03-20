@@ -80,6 +80,11 @@ handle_cast(Request, State) ->
     {noreply, State}.
 
 -spec handle_info(Info::any(), State::state()) -> {'noreply', state()}.
+handle_info({target, WXObject}, State) ->
+    wxWindow:setDropTarget(#state.frame, WXObject),
+    io:format("Target registered", []),
+    {noreply, State};
+
 handle_info(Info, State) ->
     io:format("Unhandled Info:~n~p~n", [Info]),
     {noreply, State}.

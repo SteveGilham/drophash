@@ -21,5 +21,8 @@ main() ->
 start_link() ->
     case drophash_win:start_link() of
        {error, _} = E -> E;
-        Window -> {ok, wx_object:get_pid(Window), Window}
+        Window ->
+          Pid = wx_object:get_pid(Window),
+          Pid ! {target, Window},
+          {ok, Pid, Window}
     end.
