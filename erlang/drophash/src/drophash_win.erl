@@ -51,7 +51,8 @@ init(_) ->
 
     {Frame,
         #state{
-            frame = Frame
+            frame = Frame,
+            text = Text
         }
     }.
 
