@@ -40,19 +40,21 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 %% object_wx callbacks
 -spec init(list()) -> {wxFrame:wxFrame(), state()}.
 init(_) ->
-    wx:new(),
+    Object = wx:new(),
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, "drophash", []),
     Text = wxTextCtrl:new(Frame, ?wxID_ANY),
     wxTextCtrl:setEditable(Text, false),
-    %% verify fill %% wxWindow:setBackgroundColour(Text, {0,0,127}),
-    
-    wxFrame:show(Frame),
-    wxFrame:raise(Frame),
-    %% does nothing %% wxTextCtrl:connect(Text, drop_files),
+    %% verify fill %% wxWindow:setBackgroundColour(Text, {192,192,255}),  
     
     % want to do
     %% dt = FileDropTarget(pane)
     %% pane.SetDropTarget(dt)
+    
+    wxWindow:setDropTarget(Text, Object),
+    wxTextCtrl:connect(Text, drop_files),
+    
+    wxFrame:show(Frame),
+    wxFrame:raise(Frame),
 
     {Frame,
         #state{
@@ -72,6 +74,7 @@ handle_event(Event, S) ->
 -spec handle_call(Request::any(), From::any(), State::state())
         -> {'noreply', state()} | {reply, ok, state()}.
 handle_call(noreply, _From, State) ->
+     io:format("noreply Call:~n", []),
     {noreply, State}; % wait until window closed
 
 handle_call(Request, _From, State) ->
