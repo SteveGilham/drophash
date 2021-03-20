@@ -19,7 +19,7 @@
 
 -record(state, {
     frame      :: wxFrame:wxFrame(),
-    text         :: wxTextCtrl:wxTextCtrl()
+    text         :: wxHtmlWindow:wxHtmlWindow()
 }).
 
 -type    state() :: #state{}.
@@ -42,13 +42,12 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 init(_) ->
     wx:new(),
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, "drophash", []),
-    Text = wxTextCtrl:new(Frame, ?wxID_ANY),
-    wxTextCtrl:setEditable(Text, false),
-    %% verify fill %% wxWindow:setBackgroundColour(Text, {0,0,127}),
+    Text = wxHtmlWindow:new(Frame),
+    %% verify fill %% wxWindow:setBackgroundColour(Text, {192,192,255}),  
     
     wxFrame:show(Frame),
     wxFrame:raise(Frame),
-    %% does nothing %% wxTextCtrl:connect(Text, drop_files),
+    wxHtmlWindow:connect(Text, drop_files),%% does nothing %% 
     
     % want to do
     %% dt = FileDropTarget(pane)
