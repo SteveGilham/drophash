@@ -50,7 +50,11 @@ init(_) ->
     %% dt = FileDropTarget(pane)
     %% pane.SetDropTarget(dt)
     
-    wxWindow:setDropTarget(Text, Object),
+    io:format("Object type :~n~p~n", [wx:getObjectType(Object)]),    
+    io:format("Frame type :~n~p~n", [wx:getObjectType(Frame)]),    
+    io:format("Text type :~n~p~n", [wx:getObjectType(Text)]),    
+    
+    wxWindow:setDropTarget(Text, wx:typeCast(Text, wx)),
     wxTextCtrl:connect(Text, drop_files),
     
     wxFrame:show(Frame),
