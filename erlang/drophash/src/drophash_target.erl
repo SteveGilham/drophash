@@ -1,16 +1,16 @@
 %%%-------------------------------------------------------------------
-%% @doc drophash top level window.
+%% @doc drophash target.
 %% @end
 %%%-------------------------------------------------------------------
--module(drophash_win).
+-module(drophash_target).
 
 -behaviour(wx_object).
 
 -include_lib("wx/include/wx.hrl").
 
 %% API
--export_type([drophash/0]).
--export([start/0, start_link/0, stop/1, run/1]).
+-export_type([target/0]).
+-export([start/0, start_link/0, stop/1]).
 
 
 %% wx_object callbacks
@@ -18,45 +18,36 @@
          terminate/2, code_change/3]).
 
 -record(state, {
-    frame      :: wxFrame:wxFrame(),
     text         :: wxTextCtrl:wxTextCtrl()
 }).
 
 -type    state() :: #state{}.
--type drophash() :: wxWindow:wxWindow().
+-type target() :: wxTextCtrl:wxTextCtrl().
 
--spec start() -> drophash() | {'error', any()}.
+-spec start() -> target() | {'error', any()}.
 start()         -> wx_object:start(?MODULE, [], []).
 
--spec start_link() -> drophash() | {'error', any()}.
+-spec start_link() -> target() | {'error', any()}.
 start_link()         -> wx_object:start_link(?MODULE, [], []).
 
--spec stop(drophash()) -> 'ok'.
-stop(Drophash) -> wx_object:stop(Drophash).
-
--spec run(drophash()) -> 'ok'.
-run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
+-spec stop(target()) -> 'ok'.
+stop(Target) -> wx_object:stop(Target).
 
 %% object_wx callbacks
--spec init(list()) -> {wxFrame:wxFrame(), state()}.
-init(_) ->
+-spec init(list()) -> {wxTextCtrl:wxTextCtrl(), state()}.
+init(Args) ->
+    io:format("Unhandled Event:~n~p~n", [Args]),
+    [Frame] = Args,
     wx:new(),
-    Frame = wxFrame:new(wx:null(), ?wxID_ANY, "drophash", []),
-    case wx_object:start_link(drophash_target, [Frame], []) of
-        {error, _} = Error ->
-           io:format("Error~n~p~n", [Error]),
-           Error;
-        WXObject -> 
-          wxWindow:setDropTarget(Frame, WXObject),
-          wxFrame:show(Frame),
-          wxFrame:raise(Frame),
+    Text = wxTextCtrl:new(Frame, ?wxID_ANY),
+    wxTextCtrl:setEditable(Text, false),
+    wxWindow:setBackgroundColour(Text, {0,0,127}), %% verify fill %% 
 
-          {Frame,
-              #state{
-                  frame = Frame
-              }
-          }        
-    end.
+    {Text,
+        #state{
+            text = Text
+        }
+    }.
 
 -spec handle_event(Event :: wx(), State :: state())
         -> {'noreply', state()}
@@ -88,7 +79,7 @@ handle_info(Info, State) ->
 
 -spec terminate(Reason::any(), State::state()) -> 'ok'.
 terminate(_Reason, S) ->
-    wxFrame:destroy(S#state.frame),
+    wxFrame:destroy(S#state.text),
     wx:destroy(),
     ok.
 
