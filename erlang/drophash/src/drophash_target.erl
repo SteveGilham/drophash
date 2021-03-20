@@ -42,7 +42,8 @@ init(Args) ->
     Text = wxTextCtrl:new(Frame, ?wxID_ANY),
     wxTextCtrl:setEditable(Text, false),
     wxWindow:setBackgroundColour(Text, {0,0,127}), %% verify fill %% 
-
+    %% does nothing %%    wxTextCtrl:connect(Text, drop_files),
+    
     {Text,
         #state{
             text = Text

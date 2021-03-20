@@ -48,6 +48,7 @@ init(_) ->
            Error;
         WXObject -> 
           wxWindow:setDropTarget(Frame, wx:typeCast(WXObject, wx)),
+    %% does nothing %%    wxFrame:connect(Frame, drop_files),
           wxFrame:show(Frame),
           wxFrame:raise(Frame),
 
