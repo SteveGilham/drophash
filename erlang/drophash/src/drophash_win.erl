@@ -10,7 +10,7 @@
 
 %% API
 -export_type([drophash/0]).
--export([start/0, start_link/0, stop/1]).
+-export([start/0, start_link/0, stop/1, run/1]).
 
 
 %% wx_object callbacks
@@ -33,6 +33,9 @@ start_link()         -> wx_object:start_link(?MODULE, [], []).
 
 -spec stop(drophash()) -> 'ok'.
 stop(Drophash) -> wx_object:stop(Drophash).
+
+-spec run(drophash()) -> 'ok'.
+run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 
 %% object_wx callbacks
 -spec init(list()) -> {wxFrame:wxFrame(), state()}.
