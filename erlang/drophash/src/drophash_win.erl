@@ -55,7 +55,7 @@ init(_) ->
     %% pane.SetDropTarget(dt)
     
     case drophash_target:start_link() of
-        Target -> wxTextCtrl:setDropTarget(Text, Target)
+        Target -> wxTextCtrl:setDropTarget(Text, wx:typeCast(Target, wx))
     end,
 
     {Frame,
