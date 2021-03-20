@@ -81,7 +81,7 @@ handle_cast(Request, State) ->
 
 -spec handle_info(Info::any(), State::state()) -> {'noreply', state()}.
 handle_info({target, WXObject}, State) ->
-    wxWindow:setDropTarget(#state.frame, WXObject),
+    wxWindow:setDropTarget(#state.text, wx:typeCast(WXObject, wx)),
     io:format("Target registered", []),
     {noreply, State};
 
