@@ -37,8 +37,8 @@ stop(Target) -> wx_object:stop(Target).
 -spec init(list()) -> {wxTextCtrl:wxTextCtrl(), state()}.
 init(Args) ->
     io:format("Unhandled Event:~n~p~n", [Args]),
-    [Frame] = Args,
-    wx:new(),
+    [Env, Frame] = Args,
+    wx:set_env(Env),
     Text = wxTextCtrl:new(Frame, ?wxID_ANY),
     wxTextCtrl:setEditable(Text, false),
     wxWindow:setBackgroundColour(Text, {0,0,127}), %% verify fill %% 

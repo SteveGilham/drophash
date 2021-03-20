@@ -42,7 +42,7 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 init(_) ->
     wx:new(),
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, "drophash", []),
-    case wx_object:start_link(drophash_target, [Frame], []) of
+    case wx_object:start_link(drophash_target, [wx:get_env(), Frame], []) of
         {error, _} = Error ->
            io:format("Error~n~p~n", [Error]),
            Error;
