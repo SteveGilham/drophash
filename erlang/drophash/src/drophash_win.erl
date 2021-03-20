@@ -48,6 +48,11 @@ init(_) ->
     
     wxFrame:show(Frame),
     wxFrame:raise(Frame),
+    %% does nothing %% wxTextCtrl:connect(Text, drop_files),
+    
+    % want to do
+    %% dt = FileDropTarget(pane)
+    %% pane.SetDropTarget(dt)
 
     {Frame,
         #state{
