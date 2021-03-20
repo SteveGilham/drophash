@@ -47,7 +47,7 @@ init(_) ->
            io:format("Error~n~p~n", [Error]),
            Error;
         WXObject -> 
-          wxWindow:setDropTarget(Frame, WXObject),
+          wxWindow:setDropTarget(Frame, wx:typeCast(WXObject, wx)),
           wxFrame:show(Frame),
           wxFrame:raise(Frame),
 
