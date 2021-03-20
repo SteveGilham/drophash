@@ -18,8 +18,8 @@
          terminate/2, code_change/3]).
 
 -record(state, {
-    frame      :: wxFrame:wxFrame()
-%%  TODO was HTML container
+    frame      :: wxFrame:wxFrame(),
+    text         :: wxTextCtrl:wxTextCtrl()
 }).
 
 -type    state() :: #state{}.
@@ -41,7 +41,10 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 -spec init(list()) -> {wxFrame:wxFrame(), state()}.
 init(_) ->
     wx:new(),
-    Frame   = Frame = wxFrame:new(wx:null(), ?wxID_ANY, "drophash", []),
+    Frame = wxFrame:new(wx:null(), ?wxID_ANY, "drophash", []),
+    Text = wxTextCtrl:new(Frame, ?wxID_ANY),
+    wxTextCtrl:setEditable(Text, false),
+    %% verify fill %% wxWindow:setBackgroundColour(Text, {0,0,127}),
     
     wxFrame:show(Frame),
     wxFrame:raise(Frame),
