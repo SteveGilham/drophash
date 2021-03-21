@@ -47,6 +47,9 @@ init(_) ->
     wxTextCtrl:dragAcceptFiles(Text, true),
     wxTextCtrl:connect(Text, drop_files),
 
+    wxFrame:show(Frame),
+    wxFrame:raise(Frame),
+
     {Frame,
         #state{
             frame = Frame,
