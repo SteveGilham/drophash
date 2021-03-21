@@ -43,7 +43,7 @@ init(_) ->
     wx:new(),
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, "wxErlang - Drophash", []),
     Text = wxTextCtrl:new(Frame, ?wxID_ANY,
-         [{value, "Drop files to hash"}, {style, ?wxTE_MULTILINE} ]),
+         [{value, "Drop files to hash"}, {style, ?wxTE_MULTILINE bor ?wxTE_DONTWRAP } ]),
     wxTextCtrl:setEditable(Text, false),
     wxTextCtrl:dragAcceptFiles(Text, true),
     wxTextCtrl:connect(Text, drop_files),
@@ -119,7 +119,8 @@ write_file(File, Text) ->
     Hashes = lists:map(Hash, [ md5, sha, sha256 ]),
     lists:foreach(fun (H) ->
       wxTextCtrl:appendText(Text, [H, 10])
-      end, Hashes);
+      end, Hashes),
+    wxTextCtrl:appendText(Text, [10]);
   _ -> io:format("hash_file Failure:~n~p~n~p~n", [IO, File])
   end.
     
@@ -127,5 +128,16 @@ write_file(File, Text) ->
 hash_file(Algorithm, Data) ->
   Hash = crypto:hash(Algorithm, Data),
   %% TODO -- turn into text
-  {Algorithm, Hash}.
+  Bytes = binary:bin_to_list(Hash),
+  Hexer = fun (B) -> byte_to_hex(B) end,
+  Hexed = lists:map(Hexer, Bytes),
+  [atom_to_binary(Algorithm), ": ", Hexed].
+  
+byte_to_hex(B)  when B < 256 ->
+    [nybble_to_hex(B div 16), nybble_to_hex(B rem 16)].
+  
+nybble_to_hex(N) when N < 10 ->
+    $0+N;
+nybble_to_hex(N)  when N >= 10, N < 16 ->
+    $a+(N-10).
   
