@@ -41,7 +41,7 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 -spec init(list()) -> {wxFrame:wxFrame(), state()}.
 init(_) ->
     _Object = wx:new(),
-    Frame = wxFrame:new(wx:null(), ?wxID_ANY, "drophash", []),
+    Frame = wxFrame:new(wx:null(), ?wxID_ANY, "wxErlang - Drophash", []),
     Text = wxTextCtrl:new(Frame, ?wxID_ANY),
     wxTextCtrl:setEditable(Text, false),
     %% verify fill %% wxWindow:setBackgroundColour(Text, {0,0,127}),
