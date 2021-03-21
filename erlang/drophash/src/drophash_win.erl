@@ -42,7 +42,8 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 init(_) ->
     wx:new(),
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, "wxErlang - Drophash", []),
-    Text = wxTextCtrl:new(Frame, ?wxID_ANY, [{value, "Drop files to hash"}]),
+    Text = wxTextCtrl:new(Frame, ?wxID_ANY,
+         [{value, "Drop files to hash"}, {style, ?wxTE_MULTILINE} ]),
     wxTextCtrl:setEditable(Text, false),
     wxTextCtrl:dragAcceptFiles(Text, true),
     wxTextCtrl:connect(Text, drop_files),
@@ -70,7 +71,7 @@ handle_event(#wx{event = #wxDropFiles{type = drop_files} = Event}, S) ->
       _ -> noop
     end,
     Write = fun (F) -> write_file(F, S#state.text) end,
-    Files = wxDropFilesEvent:getFiles(Event),
+    Files = Event#wxDropFiles.files,
     lists:foreach(Write, Files),
     {noreply, S};
 handle_event(Event, S) ->
@@ -109,5 +110,5 @@ code_change(_OldVsn, State, _Extra) ->
     
 %% Internal %%
 write_file(File, Text) ->
-  wxTextCtrl:appendText(Text, File + "~n").
+  wxTextCtrl:appendText(Text, [File, 10]).
   
