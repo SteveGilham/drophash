@@ -63,15 +63,16 @@ init(_) ->
          | {'stop', 'normal', state()}.
 
 handle_event(#wx{event = #wxDropFiles{type = drop_files} = Event}, S) ->
-    io:format("wxDropFiles Event:~n~p~n", [Event]),
+%%    io:format("wxDropFiles Event:~n~p~n", [Event]),
     Before = wxTextCtrl:getValue(S#state.text),
-    io:format("wxDropFiles Before:~n~p~n", [Before]),
+%%    io:format("wxDropFiles Before:~n~p~n", [Before]),
     case Before of
       "Drop files to hash" -> wxTextCtrl:clear(S#state.text);
       _ -> noop
     end,
     Write = fun (F) -> write_file(F, S#state.text) end,
     Files = Event#wxDropFiles.files,
+%%    io:format("wxDropFiles Files:~n~p~n", [Files]),
     lists:foreach(Write, Files),
     {noreply, S};
 handle_event(Event, S) ->
@@ -110,5 +111,11 @@ code_change(_OldVsn, State, _Extra) ->
     
 %% Internal %%
 write_file(File, Text) ->
-  wxTextCtrl:appendText(Text, [File, 10]).
+  wxTextCtrl:appendText(Text, [File, 10]),
+  Hash = fun (A) -> hash_file(A, File) end,
+  Hashes = lists:map(Hash, [ md5, sha, sha256 ]),
+  io:format("wxDropFiles Files:~n~p~n", [Hashes]).
+  
+hash_file(Algorithm, File) ->
+  io:format("hash_file Files:~n~p~n~p~n", [Algorithm, File]).
   
