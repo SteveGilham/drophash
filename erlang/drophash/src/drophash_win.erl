@@ -40,9 +40,9 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 %% object_wx callbacks
 -spec init(list()) -> {wxFrame:wxFrame(), state()}.
 init(_) ->
-    _Object = wx:new(),
+    wx:new(),
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, "wxErlang - Drophash", []),
-    Text = wxTextCtrl:new(Frame, ?wxID_ANY),
+    Text = wxTextCtrl:new(Frame, ?wxID_ANY, [{value, "Drop files to hash"}]),
     wxTextCtrl:setEditable(Text, false),
     wxTextCtrl:dragAcceptFiles(Text, true),
     wxTextCtrl:connect(Text, drop_files),
