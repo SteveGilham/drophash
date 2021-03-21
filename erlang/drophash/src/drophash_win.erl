@@ -131,7 +131,8 @@ hash_file(Algorithm, Data) ->
   Bytes = binary:bin_to_list(Hash),
   Hexer = fun (B) -> byte_to_hex(B) end,
   Hexed = lists:map(Hexer, Bytes),
-  [atom_to_binary(Algorithm), ": ", Hexed].
+  Type = atom_to_binary(Algorithm),
+  [string:pad(Type, 6), ": ", Hexed].
   
 byte_to_hex(B)  when B < 256 ->
     [nybble_to_hex(B div 16), nybble_to_hex(B rem 16)].
