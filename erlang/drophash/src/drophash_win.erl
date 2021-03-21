@@ -19,7 +19,7 @@
 
 -record(state, {
     frame      :: wxFrame:wxFrame(),
-    text         :: wxTextCtrl:wxTextCtrl()
+    text         :: wxStyledTextCtrl:wxStyledTextCtrl()
 }).
 
 -type    state() :: #state{}.
@@ -42,11 +42,11 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 init(_) ->
     wx:new(),
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, "wxErlang - Drophash", []),
-    Text = wxTextCtrl:new(Frame, ?wxID_ANY,
-         [{value, "Drop files to hash"}, {style, ?wxTE_MULTILINE bor ?wxTE_DONTWRAP } ]),
-    wxTextCtrl:setEditable(Text, false),
-    wxTextCtrl:dragAcceptFiles(Text, true),
-    wxTextCtrl:connect(Text, drop_files),
+    Text = wxStyledTextCtrl:new(Frame,
+         [{style, ?wxTE_MULTILINE bor ?wxTE_DONTWRAP bor ?wxTE_READONLY} ]),
+    wxStyledTextCtrl:addText(Text, "Drop files to hash"),        
+    wxStyledTextCtrl:dragAcceptFiles(Text, true),
+    wxStyledTextCtrl:connect(Text, drop_files),
 
     wxFrame:show(Frame),
     wxFrame:raise(Frame),
@@ -64,10 +64,10 @@ init(_) ->
 
 handle_event(#wx{event = #wxDropFiles{type = drop_files} = Event}, S) ->
 %%    io:format("wxDropFiles Event:~n~p~n", [Event]),
-    Before = wxTextCtrl:getValue(S#state.text),
+    Before = wxStyledTextCtrl:getValue(S#state.text),
 %%    io:format("wxDropFiles Before:~n~p~n", [Before]),
     case Before of
-      "Drop files to hash" -> wxTextCtrl:clear(S#state.text);
+      "Drop files to hash" -> wxStyledTextCtrl:clear(S#state.text);
       _ -> noop
     end,
     Write = fun (F) -> write_file(F, S#state.text) end,
@@ -111,16 +111,16 @@ code_change(_OldVsn, State, _Extra) ->
     
 %% Internal %%
 write_file(File, Text) ->
-  wxTextCtrl:appendText(Text, [File, 10]),
+  wxStyledTextCtrl:appendText(Text, [File, 10]),
   IO = file:read_file(File),
   case IO of
   {ok, Data} ->
     Hash = fun (A) -> hash_file(A, Data) end,
     Hashes = lists:map(Hash, [ md5, sha, sha256 ]),
     lists:foreach(fun (H) ->
-      wxTextCtrl:appendText(Text, [H, 10])
+      wxStyledTextCtrl:appendText(Text, [H, 10])
       end, Hashes),
-    wxTextCtrl:appendText(Text, [10]);
+    wxStyledTextCtrl:appendText(Text, [10]);
   _ -> io:format("hash_file Failure:~n~p~n~p~n", [IO, File])
   end.
     
