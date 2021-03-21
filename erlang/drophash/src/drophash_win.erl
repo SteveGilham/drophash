@@ -44,16 +44,8 @@ init(_) ->
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, "wxErlang - Drophash", []),
     Text = wxTextCtrl:new(Frame, ?wxID_ANY),
     wxTextCtrl:setEditable(Text, false),
-    %% verify fill %% wxWindow:setBackgroundColour(Text, {0,0,127}),
-    
-    wxFrame:show(Frame),
-    wxFrame:raise(Frame),
-    %% does nothing %%    wxFrame:connect(Frame, drop_files),
-    %% does what you'd expect %%    wxTextCtrl:connect(Text, motion),
-    
-    % want to do
-    %% dt = FileDropTarget(pane)
-    %% pane.SetDropTarget(dt)
+    wxTextCtrl:dragAcceptFiles(Text, true),
+    wxTextCtrl:connect(Text, drop_files),
 
     {Frame,
         #state{
