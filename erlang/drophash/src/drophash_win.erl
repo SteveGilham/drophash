@@ -61,6 +61,18 @@ init(_) ->
         -> {'noreply', state()}
          | {'stop', 'normal', state()}.
 
+handle_event(#wx{event = #wxDropFiles{type = drop_files} = Event}, S) ->
+    io:format("wxDropFiles Event:~n~p~n", [Event]),
+    Before = wxTextCtrl:getValue(S#state.text),
+    io:format("wxDropFiles Before:~n~p~n", [Before]),
+    case Before of
+      "Drop files to hash" -> wxTextCtrl:clear(S#state.text);
+      _ -> noop
+    end,
+    Write = fun (F) -> write_file(F, S#state.text) end,
+    Files = wxDropFilesEvent:getFiles(Event),
+    lists:foreach(Write, Files),
+    {noreply, S};
 handle_event(Event, S) ->
     io:format("Unhandled Event:~n~p~n", [Event]),
     {noreply, S}.
@@ -94,3 +106,8 @@ terminate(_Reason, S) ->
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+    
+%% Internal %%
+write_file(File, Text) ->
+  wxTextCtrl:appendText(Text, File + "~n").
+  
