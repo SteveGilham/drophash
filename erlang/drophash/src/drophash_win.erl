@@ -127,12 +127,19 @@ write_file(File, Text) ->
 
 hash_file(Algorithm, Data) ->
   Hash = crypto:hash(Algorithm, Data),
-  %% TODO -- turn into text
   Bytes = binary:bin_to_list(Hash),
   Hexer = fun (B) -> byte_to_hex(B) end,
   Hexed = lists:map(Hexer, Bytes),
+  Chunked = chunk(Hexed),
   Type = atom_to_binary(Algorithm),
-  [string:pad(Type, 6), ": ", Hexed].
+  [string:pad(Type, 6), ": ", Chunked].
+  
+chunk([]) -> [];
+chunk(L) ->
+  %% list is a list of lists, each inner list is a byte as 2 nybbles
+  {Head, Tail} = lists:split(2, L),
+  NewTail = chunk(Tail),
+  [ Head | [ " " | NewTail]].
   
 byte_to_hex(B)  when B < 256 ->
     [nybble_to_hex(B div 16), nybble_to_hex(B rem 16)].
