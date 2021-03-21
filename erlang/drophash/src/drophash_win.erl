@@ -112,10 +112,20 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal %%
 write_file(File, Text) ->
   wxTextCtrl:appendText(Text, [File, 10]),
-  Hash = fun (A) -> hash_file(A, File) end,
-  Hashes = lists:map(Hash, [ md5, sha, sha256 ]),
-  io:format("wxDropFiles Files:~n~p~n", [Hashes]).
-  
-hash_file(Algorithm, File) ->
-  io:format("hash_file Files:~n~p~n~p~n", [Algorithm, File]).
+  IO = file:read_file(File),
+  case IO of
+  {ok, Data} ->
+    Hash = fun (A) -> hash_file(A, Data) end,
+    Hashes = lists:map(Hash, [ md5, sha, sha256 ]),
+    lists:foreach(fun (H) ->
+      wxTextCtrl:appendText(Text, [H, 10])
+      end, Hashes);
+  _ -> io:format("hash_file Failure:~n~p~n~p~n", [IO, File])
+  end.
+    
+
+hash_file(Algorithm, Data) ->
+  Hash = crypto:hash(Algorithm, Data),
+  %% TODO -- turn into text
+  {Algorithm, Hash}.
   
