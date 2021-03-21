@@ -19,7 +19,8 @@
 
 -record(state, {
     frame      :: wxFrame:wxFrame(),
-    text         :: wxStyledTextCtrl:wxStyledTextCtrl()
+    text       :: wxStyledTextCtrl:wxStyledTextCtrl(),
+    font       :: wxFont:wxFont()    
 }).
 
 -type    state() :: #state{}.
@@ -41,7 +42,8 @@ run(Drophash) -> catch wx_object:call(Drophash, noreply), ok.
 -spec init(list()) -> {wxFrame:wxFrame(), state()}.
 init(_) ->
     wx:new(),
-    Frame = wxFrame:new(wx:null(), ?wxID_ANY, "wxErlang - Drophash", []),
+    Frame = wxFrame:new(wx:null(), ?wxID_ANY, "wxErlang - Drophash",
+        [{size, {800, 600}}]),
     Text = wxStyledTextCtrl:new(Frame,
          [{style, ?wxTE_MULTILINE bor ?wxTE_DONTWRAP bor ?wxTE_READONLY} ]),
     wxStyledTextCtrl:addText(Text, "Drop files to hash"),        
@@ -50,11 +52,18 @@ init(_) ->
 
     wxFrame:show(Frame),
     wxFrame:raise(Frame),
+    OldFont = wxStyledTextCtrl:getFont(Text),
 
     {Frame,
         #state{
             frame = Frame,
-            text = Text
+            text = Text,
+            font = wxFont:new(
+              wxFont:getPointSize(OldFont),
+              ?wxFONTFAMILY_TELETYPE,
+              ?wxFONTSTYLE_NORMAL,
+              wxFont:getWeight(OldFont)
+            )
         }
     }.
 
@@ -65,7 +74,11 @@ init(_) ->
 handle_event(#wx{event = #wxDropFiles{type = drop_files} = Event}, S) ->
     Before = wxStyledTextCtrl:getText(S#state.text),
     case Before of
-      "Drop files to hash" -> wxStyledTextCtrl:clearAll(S#state.text);
+      "Drop files to hash" -> 
+        wxStyledTextCtrl:clearAll(S#state.text),
+        wxStyledTextCtrl:styleSetFont(S#state.text,
+                                      ?wxSTC_STYLE_DEFAULT,
+                                      S#state.font);
       _ -> noop
     end,
     Write = fun (F) -> write_file(F, S#state.text) end,
