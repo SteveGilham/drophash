@@ -262,7 +262,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
         // Skip the executable name
 #pragma warning (suppress : 26821) // only used as a range
-        auto args = std::ranges::views::counted(std::next(szArglist), static_cast<ptrdiff_t>(nArgs) - 1);
+        auto args = std::ranges::views::counted(std::next(szArglist), gsl::narrow_cast<ptrdiff_t>(nArgs) - 1);
 
         // pointer arithmetic, yuck!!
         constexpr SIZE_T wideheader{
