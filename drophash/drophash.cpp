@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 //---------------------------------------------------------------------------
-#define ID_EDIT 1
+constexpr UINT_PTR ID_EDIT = 1;
 
 LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define MAINCLASS TEXT("DropHashClass")
@@ -153,7 +153,7 @@ int WINAPI WinMain(_In_ HINSTANCE instance,
   return msg.wParam != 0;
 }
 
-int CALLBACK EnumFontFamiliesExProc(CONST LOGFONTW* lpelfe, CONST TEXTMETRICW*, DWORD, LPARAM lParam) noexcept
+static int CALLBACK EnumFontFamiliesExProc(CONST LOGFONTW* lpelfe, CONST TEXTMETRICW*, DWORD, LPARAM lParam) noexcept
 {
   auto back_channel{ ptr_cast<LOGFONTW*>(lParam) };
   const auto* const extended{ data_cast<const ENUMLOGFONTEXW>(lpelfe) };
