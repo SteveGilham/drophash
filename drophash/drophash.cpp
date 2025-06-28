@@ -411,7 +411,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           file.read(&gsl::at(chunk, 0), gsl::narrow<std::streamsize>(chunk.size()));
 
           DWORD got = gsl::narrow<DWORD>(file.gcount());
-          auto chunkBYTEs{ std::as_bytes(std::span(chunk)) };
+          auto chunkBYTEs{ gsl::as_bytes(gsl::span(chunk)) };
 
           const auto check =
             std::ranges::find_if(results, [&chunkBYTEs, &got](Record hash) -> bool {
