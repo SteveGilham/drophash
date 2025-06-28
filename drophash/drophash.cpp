@@ -64,7 +64,7 @@ U ptr_cast(T input) noexcept
 static DWORD get_error_message(std::wstring& message)
 {
 #pragma warning(suppress: 26429) //What is this smoking? Symbol 'lpMsgBuf' is never tested for nullness, it can be marked as not_null (f.23).
-  wchar_t* lpMsgBuf{ nullptr };
+  gsl::wzstring lpMsgBuf{ nullptr };
   const DWORD dw{ GetLastError() };
 
   if (FormatMessageW(
@@ -77,14 +77,14 @@ static DWORD get_error_message(std::wstring& message)
     data_cast<wchar_t>(&lpMsgBuf),
     0, NULL))
   {
-    auto free_buffer = std::unique_ptr<wchar_t, decltype(&LocalFree)>(lpMsgBuf, &LocalFree);
+    auto free_buffer = gsl::finally([&lpMsgBuf]() noexcept { LocalFree(lpMsgBuf); });
     message += *lpMsgBuf;
   }
   else
   {
     std::array<wchar_t, 128> buffer{ 0 };
-    swprintf_s(buffer.data(), buffer.size(), L"Error %x -- not expanded because %x\n", static_cast<unsigned int>(dw), static_cast<unsigned int>(GetLastError()));
-    message += buffer.data();
+    swprintf_s(&gsl::at(buffer, 0), buffer.size(), L"Error %x -- not expanded because %x\n", gsl::narrow<unsigned int>(dw), gsl::narrow<unsigned int>(GetLastError()));
+    message += &gsl::at(buffer, 0);
   }
 
   return dw;
@@ -181,7 +181,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
       WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | WS_BORDER | ES_LEFT |
       ES_MULTILINE | ES_AUTOHSCROLL | ES_AUTOVSCROLL | ES_READONLY,
       0, 0, 0, 0, hwnd,
-      reinterpret_cast<HMENU>(ID_EDIT),
+      ptr_cast<HMENU>(gsl::narrow<size_t>(ID_EDIT)),
       ptr_cast<LPCREATESTRUCT>(lParam)->hInstance,
       nullptr);
 
@@ -201,10 +201,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
       }
 
       auto context = GetDC(nullptr);
-      auto deleter = std::function<void(HDC)>([](HDC dc) {
-        if (dc) ReleaseDC(nullptr, dc);
-        });
-      const auto resetDC = std::unique_ptr<HDC, std::function<void(HDC)>>(context, deleter);
+      const auto resetDC = gsl::finally([&context]() noexcept {ReleaseDC(nullptr, context); });
 
       LOGFONTW probe{};
       probe.lfFaceName[0] = L'\0';
@@ -261,11 +258,11 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
       auto szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
       if (szArglist && nArgs > 1)
       {
-        auto releaseArgs = std::unique_ptr<LPWSTR, decltype(&LocalFree)>(szArglist, &LocalFree);
+        auto releaseArgs = gsl::finally([&szArglist]() noexcept {LocalFree(szArglist); });
 
         // Skip the executable name
 #pragma warning (suppress : 26821) // only used as a range
-        auto args = std::ranges::views::counted(std::next(szArglist), static_cast<ptrdiff_t>(nArgs) - 1);
+        auto args = std::ranges::views::counted(std::next(szArglist), gsl::narrow_cast<ptrdiff_t>(nArgs) - 1);
 
         // pointer arithmetic, yuck!!
         constexpr SIZE_T wideheader{
@@ -274,7 +271,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
         constexpr SIZE_T header{ wideheader * sizeof(wchar_t) };
         SIZE_T buffersize{ header + sizeof(wchar_t) };
 
-        std::ranges::for_each(args, [&buffersize](wchar_t* in) noexcept {
+        std::ranges::for_each(args, [&buffersize](gsl::wzstring in) noexcept {
           buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
           });
 
@@ -282,15 +279,15 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
         if (hGlobal)
         {
           void* memory = GlobalLock(hGlobal);
-          auto unlock = std::unique_ptr<void, decltype(&GlobalUnlock)>(memory, &GlobalUnlock);
+          auto unlock = gsl::finally([&hGlobal]() noexcept {GlobalUnlock(hGlobal); });
 
-          const std::span<wchar_t> characters{
+          const gsl::span<wchar_t> characters{
               data_cast<wchar_t>(memory),
-              static_cast<int>(buffersize / sizeof(wchar_t))
+              gsl::narrow<std::size_t>(buffersize / sizeof(wchar_t))
           };
 
           auto pDropFiles = data_cast<DROPFILES>(memory);
-          pDropFiles->pFiles = static_cast<DWORD>(header);
+          pDropFiles->pFiles = gsl::narrow<DWORD>(header);
           pDropFiles->fWide = TRUE;
           pDropFiles->pt.x = pDropFiles->pt.y = 0;
           pDropFiles->fNC = FALSE;
@@ -299,8 +296,8 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           std::advance(cursor, wideheader);
           const auto end{ characters.end() }; // fixed buffer end
 
-          std::ranges::for_each(args, [&cursor, &end](wchar_t* in) {
-            wcscpy_s(std::to_address(cursor), static_cast<rsize_t>(end - cursor), in);
+          std::ranges::for_each(args, [&cursor, &end](gsl::wzstring in) {
+            wcscpy_s(std::to_address(cursor), gsl::narrow<rsize_t>(end - cursor), in);
             std::advance(cursor, wcslen(in) + 1);
             });
 
@@ -331,10 +328,14 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
   case WM_DROPFILES:
   {
     auto cursor = Wait();
-    auto unwait = std::unique_ptr<std::remove_pointer<HCURSOR>::type, decltype(&Unwait)>(cursor, &Unwait);
-    auto render = std::unique_ptr<void, std::function<void(void*)>>(nullptr, [](void*) { SetWindowTextW(client, text.c_str()); });
+    auto unwait = gsl::finally([&cursor]() noexcept {Unwait(cursor); });
+    auto render = gsl::finally([]() {
+      text += L"\r\n";
+      SetWindowText(client, text.c_str());
+      });
+
     auto drop = ptr_cast<HDROP>(wParam);
-    auto finishDrag = std::unique_ptr<std::remove_pointer<HDROP>::type, decltype(&DragFinish)>(drop, &DragFinish);
+    auto finishDrag = gsl::finally([&drop]() noexcept { DragFinish(drop); });
 
     const UINT nfiles = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
 
@@ -354,15 +355,14 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
     }
 
     // and manage its lifetime
-    auto deleter = std::function<void(HCRYPTPROV)>([](HCRYPTPROV hProv) { CryptReleaseContext(hProv, 0); });
-    auto releaseContext = std::unique_ptr<std::remove_pointer<HCRYPTPROV>::type, std::function<void(HCRYPTPROV)>>(hProv, deleter);
+    auto releaseContext = gsl::finally([&hProv]() noexcept {CryptReleaseContext(hProv, 0); });
 
     // Now hash each file in turn
     for (UINT i = 0; i < nfiles; ++i)
     {
       const UINT length = DragQueryFileW(drop, i, nullptr, 0) + 1;
       std::vector<wchar_t> fn(length);
-      DragQueryFileW(drop, i, fn.data(), static_cast<UINT>(fn.size()));
+      DragQueryFileW(drop, i, &gsl::at(fn, 0), gsl::narrow<UINT>(fn.size()));
 
       typedef std::tuple<std::wstring, DWORD, DWORD> Recipe;
       typedef std::tuple<std::wstring, HCRYPTHASH, DWORD> Record;
@@ -376,13 +376,11 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
       // ... add more hash algorithms here e.g. CALG_SHA_384 or CALG_SHA_512
 
       std::vector<Record> results;
-      auto releaseResults = std::unique_ptr<std::vector<Record>, std::function<void(std::vector<Record>*)>>(&results, [](std::vector<Record>* res) {
-        for (auto& item : *res)
-        {
-          const auto hash = std::get<1>(item);
-          if (hash) { CryptDestroyHash(hash); }
-        }
-        });
+      auto releaseResults = gsl::finally([&results]() noexcept {for (auto& item : results)
+      {
+        const auto hash = std::get<1>(item);
+        if (hash) { CryptDestroyHash(hash); }
+      }});
       results.resize(inputs.size());
       std::ranges::transform(inputs, results.begin(), [&hProv](Recipe in) -> Record {
         HCRYPTHASH hHash = 0;
@@ -401,24 +399,24 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           std::get<2>(in));
         });
 
-      text += fn.data();
+      text += &gsl::at(fn, 0);
       text += L"\r\n";
 
-      std::ifstream file{ fn.data(), std::ios::in | std::ios::binary };
+      std::ifstream file{ &gsl::at(fn, 0), std::ios::in | std::ios::binary };
       std::array<char, 4096> chunk{};
       if (file.is_open())
       {
         for (;;)
         {
-          file.read(chunk.data(), static_cast<std::streamsize>(chunk.size()));
+          file.read(&gsl::at(chunk, 0), gsl::narrow<std::streamsize>(chunk.size()));
 
-          DWORD got = static_cast<DWORD>(file.gcount());
+          DWORD got = gsl::narrow<DWORD>(file.gcount());
           auto chunkBYTEs{ std::as_bytes(std::span(chunk)) };
 
           const auto check =
             std::ranges::find_if(results, [&chunkBYTEs, &got](Record hash) -> bool {
             const auto handle = std::get<1>(hash);
-            if (!handle || CryptHashData(handle, reinterpret_cast<const BYTE*>(chunkBYTEs.data()), got, 0))
+            if (!handle || CryptHashData(handle, ptr_cast<const BYTE*>(&chunkBYTEs[0]), got, 0))
             {
               return false;
             }
@@ -450,7 +448,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           const auto handle = std::get<1>(hash);
           if (handle)
           {
-            if (CryptGetHashParam(handle, HP_HASHVAL, buffer.data(), &hash_size, 0))
+            if (CryptGetHashParam(handle, HP_HASHVAL, &gsl::at(buffer, 0), &hash_size, 0))
             {
               text += std::get<0>(hash) + L": ";
               format_hex_string(buffer, text);
