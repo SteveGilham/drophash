@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 //---------------------------------------------------------------------------
-constexpr int ID_EDIT = 1;
+constexpr UINT_PTR ID_EDIT = 1;
 
 LRESULT CALLBACK MainWndProc(HWND, UINT, WPARAM, LPARAM);
 #define MAINCLASS TEXT("DropHashClass")
