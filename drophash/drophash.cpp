@@ -64,7 +64,7 @@ U ptr_cast(T input) noexcept
 static DWORD get_error_message(std::wstring& message)
 {
 #pragma warning(suppress: 26429) //What is this smoking? Symbol 'lpMsgBuf' is never tested for nullness, it can be marked as not_null (f.23).
-  gsl::wzstring<> lpMsgBuf{ nullptr };
+  gsl::wzstring lpMsgBuf{ nullptr };
   const DWORD dw{ GetLastError() };
 
   if (FormatMessageW(
@@ -271,7 +271,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
         constexpr SIZE_T header{ wideheader * sizeof(wchar_t) };
         SIZE_T buffersize{ header + sizeof(wchar_t) };
 
-        std::ranges::for_each(args, [&buffersize](gsl::wzstring<> in) noexcept {
+        std::ranges::for_each(args, [&buffersize](gsl::wzstring in) noexcept {
           buffersize += sizeof(wchar_t) * (wcslen(in) + 1);
           });
 
@@ -283,7 +283,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
 
           const gsl::span<wchar_t> characters{
               data_cast<wchar_t>(memory),
-              gsl::narrow<int>(buffersize / sizeof(wchar_t))
+              gsl::narrow<std::size_t>(buffersize / sizeof(wchar_t))
           };
 
           auto pDropFiles = data_cast<DROPFILES>(memory);
@@ -296,7 +296,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           std::advance(cursor, wideheader);
           const auto end{ characters.end() }; // fixed buffer end
 
-          std::ranges::for_each(args, [&cursor, &end](gsl::wzstring<> in) {
+          std::ranges::for_each(args, [&cursor, &end](gsl::wzstring in) {
             wcscpy_s(std::to_address(cursor), gsl::narrow<rsize_t>(end - cursor), in);
             std::advance(cursor, wcslen(in) + 1);
             });
@@ -411,12 +411,12 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message,
           file.read(&gsl::at(chunk, 0), gsl::narrow<std::streamsize>(chunk.size()));
 
           DWORD got = gsl::narrow<DWORD>(file.gcount());
-          auto chunkBYTEs{ gsl::as_span<BYTE>(gsl::as_bytes(gsl::as_span(chunk))) };
+          auto chunkBYTEs{ gsl::as_bytes(gsl::span(chunk)) };
 
           const auto check =
             std::ranges::find_if(results, [&chunkBYTEs, &got](Record hash) -> bool {
             const auto handle = std::get<1>(hash);
-            if (!handle || CryptHashData(handle, &chunkBYTEs[0], got, 0))
+            if (!handle || CryptHashData(handle, ptr_cast<const BYTE*>(&chunkBYTEs[0]), got, 0))
             {
               return false;
             }
